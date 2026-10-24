@@ -1,0 +1,17 @@
+server:
+  port: ${SERVER_PORT:8084}
+spring:
+  application:
+    name: release-service
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:release;DB_CLOSE_DELAY=-1}
+    username: ${DB_USERNAME:release_user}
+    password: ${DB_PASSWORD:release_local_demo}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:create-drop}
+    open-in-view: false
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %logger{36} - %msg%n"
