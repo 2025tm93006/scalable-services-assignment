@@ -1,8 +1,9 @@
 # Secure File Quarantine and Release System
 
-Assignment 1 for Scalable Services SEZG583. This initial commit contains the
-project : four independent Spring Boot entry points, isolated H2
-configuration, correlation IDs, GET /health, and health API contracts.
+Assignment 1 for Scalable Services SEZG583. The project has four independent
+Spring Boot entry points, isolated H2 configuration, correlation IDs and GET /health.
+Intake includes metadata acceptance and idempotency. Quarantine, Scanner and
+Release currently contain their service entry points and health endpoints.
 
 ## Prerequisites
 
@@ -11,7 +12,7 @@ dependencies. All database credentials here are local demonstration values.
 
 ## Build and run
 
-From this folder, run `mvn clean package`. This scaffold has no business tests yet.
+From this folder, run `mvn clean package`. Intake includes unit and HTTP/database tests.
 Run each command in a separate terminal after packaging:
 
 ```bash
@@ -29,8 +30,10 @@ java -jar release-service/target/release-service-1.0.0-SNAPSHOT.jar
 | Release | Verify quarantine state and permit clean release | 8084 |
 
 With all services running, run `bash scripts/health.sh`. Ctrl-C stops each service.
-H2 state is in memory and disappears on shutdown. Each service has its own
-database URL and credentials. For overrides, export SERVER_PORT, DB_URL,
+Intake stores its H2 database in `data/intake.mv.db` and preserves records across
+restarts. Start Intake from the repository root so it uses the same relative
+database path each time. The other services currently use in-memory databases.
+Each service has its own database URL and credentials. For overrides, export SERVER_PORT, DB_URL,
 DB_USERNAME, DB_PASSWORD, DB_DRIVER and DDL_AUTO in that service's terminal;
 see its `.env.example`. These files are examples and are not loaded automatically.
 
@@ -40,3 +43,6 @@ see its `.env.example`. These files are examples and are not loaded automaticall
 modules each contain sources, test locations, a dependency file and configuration.
 `docs/` holds the review, report work and OpenAPI contracts; `scripts/` holds
 repeatable checks; `evidence/` reserves a folder per engineering challenge and tests.
+
+See [Intake service](intake-service/README.md) for its API, business rules, database
+design, tests and Challenge 2 evidence instructions.

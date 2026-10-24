@@ -1,0 +1,9 @@
+TIMESTAMP 2026-10-24T08:08:20.995673+00:00
+COMMAND python3 scripts/persistence.py
+DATABASE isolated temporary file-based H2; existing application data is untouched
+BEFORE_RESTART 201 {"fileId": "31f9149b-d6d7-4ed9-acd9-781f8f450e97", "filename": "restart.txt", "receivedAt": "2026-10-24T08:08:23.858168Z", "scannerMode": "CLEAN", "status": "RECEIVED"}
+FIRST_PROCESS_STOPPED DATABASE_FILE_EXISTS true
+AFTER_RESTART_GET 200 {"fileId": "31f9149b-d6d7-4ed9-acd9-781f8f450e97", "filename": "restart.txt", "receivedAt": "2026-10-24T08:08:23.858168Z", "scannerMode": "CLEAN", "status": "RECEIVED"}
+AFTER_RESTART_REPLAY 201 {"fileId": "31f9149b-d6d7-4ed9-acd9-781f8f450e97", "filename": "restart.txt", "receivedAt": "2026-10-24T08:08:23.858168Z", "scannerMode": "CLEAN", "status": "RECEIVED"}
+DATABASE_EVIDENCE {"databaseRecordCount": 1, "fileId": "31f9149b-d6d7-4ed9-acd9-781f8f450e97", "idempotencyKey": "restart-6456377c-9e10-442b-b594-b00b067cc569"}
+INTAKE_PERSISTENCE_PASS

@@ -1,0 +1,6 @@
+CAPTURED_UTC 2026-10-24T08:09:19.591890+00:00
+JAVA_HOME /Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home
+SOURCE /private/tmp/intake-persistence-20261024/project (temporary copy before applying files)
+COMMAND mvn -B -ntp -o -s /Users/amrurama/Desktop/scalable-services/maven-settings.xml -f /private/tmp/intake-persistence-20261024/project/pom.xml -pl intake-service -am clean package
+RESULT BUILD SUCCESS; Intake unit 13 + HTTP/H2 23 = 36 tests; 0 failures/errors/skipped
+RESTART_CHECK python3 scripts/persistence.py; INTAKE_PERSISTENCE_PASS; isolated file database

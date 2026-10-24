@@ -1,7 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Intake Service Scaffold API
-  version: 0.1.0
+  title: Intake Service API
+  version: 1.0.0
+  description: Accept metadata and replay an intake operation using its Idempotency-Key.
 servers:
   - url: http://localhost:8081
 paths:
@@ -19,3 +20,151 @@ paths:
                   status: { type: string, example: UP }
                   service: { type: string }
                   timestamp: { type: string, format: date-time }
+  /api/v1/files:
+    post:
+      summary: Accept metadata or replay the original response
+      description: >-
+        Store the key, request fingerprint and response atomically. Same key and
+        same typed payload replay the original 201 body. A different payload
+        returns 409, including simultaneous requests. A new key is a new operation.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description: Case-sensitive operation key, not blank.
+          schema: { type: string, minLength: 1, maxLength: 255, pattern: '\S' }
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IntakeRequest' }
+            example:
+              filename: demo.txt
+              contentType: text/plain
+              sizeBytes: 4
+              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              scannerMode: CLEAN
+      responses:
+        '201':
+          description: Accepted or replayed, with the original file ID and timestamp.
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntakeResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: Key was already used with a different payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '415':
+          description: Unsupported content type; use application/json.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/files/{id}:
+    get:
+      summary: Read an accepted file by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: The original accepted response.
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntakeResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404':
+          description: File ID is unknown to Intake.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/files/_evidence/idempotency/{key}:
+    get:
+      summary: Read the database count for an idempotency key
+      description: Read-only assignment evidence; no record is created.
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 255, pattern: '\S' }
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: A missing key has count 0 and null fileId.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [idempotencyKey, databaseRecordCount, fileId]
+                properties:
+                  idempotencyKey: { type: string }
+                  databaseRecordCount: { type: integer, format: int64, minimum: 0, maximum: 1 }
+                  fileId: { type: string, format: uuid, nullable: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+components:
+  parameters:
+    CorrelationId:
+      in: header
+      name: X-Correlation-Id
+      required: false
+      description: Echoed and logged; generated when absent.
+      schema: { type: string }
+  headers:
+    CorrelationId:
+      description: Request correlation ID, returned on all responses.
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid key, metadata, JSON or UUID.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    InternalError:
+      description: Unexpected failure; internal details are logged.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+  schemas:
+    IntakeRequest:
+      type: object
+      required: [filename, contentType, sizeBytes, sha256, scannerMode]
+      properties:
+        filename: { type: string, minLength: 1, maxLength: 255, pattern: '\S' }
+        contentType: { type: string, minLength: 1, maxLength: 255, pattern: '\S' }
+        sizeBytes: { type: integer, format: int64, minimum: 0 }
+        sha256: { type: string, pattern: '^[a-fA-F0-9]{64}$' }
+        scannerMode: { type: string, enum: [CLEAN, INFECTED, FAIL, SLOW] }
+    IntakeResponse:
+      type: object
+      required: [fileId, status, filename, scannerMode, receivedAt]
+      properties:
+        fileId: { type: string, format: uuid }
+        status: { type: string, enum: [RECEIVED] }
+        filename: { type: string }
+        scannerMode: { type: string, enum: [CLEAN, INFECTED, FAIL, SLOW] }
+        receivedAt: { type: string, format: date-time }
+    ApiError:
+      type: object
+      required: [timestamp, status, error, message, path, correlationId, fieldErrors]
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        error: { type: string }
+        message: { type: string }
+        path: { type: string }
+        correlationId: { type: string }
+        fieldErrors:
+          type: object
+          additionalProperties: { type: string }

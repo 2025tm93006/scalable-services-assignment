@@ -1,0 +1,84 @@
+COMMAND SERVER_PORT=54079 java -jar intake-service/target/intake-service-1.0.0-SNAPSHOT.jar
+TIMESTAMP 2026-10-24T07:17:02.453345+00:00
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.5)
+
+2026-10-24T12:47:03.051+05:30 INFO  [] c.b.secure.intake.IntakeApplication - Starting IntakeApplication using Java 21.0.6 with PID 47421 (/Users/amrurama/Desktop/scalable-services/assignment/intake-service/target/intake-service-1.0.0-SNAPSHOT.jar started by amrurama in /Users/amrurama/Desktop/scalable-services/assignment)
+2026-10-24T12:47:03.052+05:30 INFO  [] c.b.secure.intake.IntakeApplication - No active profile set, falling back to 1 default profile: "default"
+2026-10-24T12:47:03.402+05:30 INFO  [] o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-10-24T12:47:03.429+05:30 INFO  [] o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 22 ms. Found 1 JPA repository interface.
+2026-10-24T12:47:03.696+05:30 INFO  [] o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 54079 (http)
+2026-10-24T12:47:03.703+05:30 INFO  [] o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-10-24T12:47:03.704+05:30 INFO  [] o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.31]
+2026-10-24T12:47:03.719+05:30 INFO  [] o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-10-24T12:47:03.720+05:30 INFO  [] o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 643 ms
+2026-10-24T12:47:03.790+05:30 INFO  [] o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-10-24T12:47:03.825+05:30 INFO  [] org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-10-24T12:47:03.842+05:30 INFO  [] o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2026-10-24T12:47:03.999+05:30 INFO  [] o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-10-24T12:47:04.015+05:30 INFO  [] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-10-24T12:47:04.122+05:30 INFO  [] com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:intake user=INTAKE_USER
+2026-10-24T12:47:04.122+05:30 INFO  [] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-10-24T12:47:04.582+05:30 INFO  [] o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-10-24T12:47:04.601+05:30 INFO  [] o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-10-24T12:47:04.984+05:30 INFO  [] o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 54079 (http) with context path '/'
+2026-10-24T12:47:04.996+05:30 INFO  [] c.b.secure.intake.IntakeApplication - Started IntakeApplication in 2.213 seconds (process running for 2.526)
+2026-10-24T12:47:05.181+05:30 INFO  [] o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-24T12:47:05.181+05:30 INFO  [] o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-10-24T12:47:05.182+05:30 INFO  [] o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2026-10-24T12:47:05.218+05:30 INFO  [f7f8d3c0-d856-4046-ae51-633d531786ae] c.b.s.common.CorrelationIdFilter - request method=GET path=/health status=200
+2026-10-24T12:47:05.799+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_created fileId=d28ddfdb-fb80-479b-a691-c5a3768b6e2b
+2026-10-24T12:47:05.804+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.811+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_replay fileId=d28ddfdb-fb80-479b-a691-c5a3768b6e2b
+2026-10-24T12:47:05.811+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.815+05:30 WARN  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_conflict fileId=d28ddfdb-fb80-479b-a691-c5a3768b6e2b
+2026-10-24T12:47:05.820+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=409
+2026-10-24T12:47:05.826+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=GET path=/api/v1/files/d28ddfdb-fb80-479b-a691-c5a3768b6e2b status=200
+2026-10-24T12:47:05.862+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_created fileId=bfb00e25-7494-4425-8410-738101bb4ac8
+2026-10-24T12:47:05.863+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.863+05:30 WARN  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - SQL Error: 23505, SQLState: 23505
+2026-10-24T12:47:05.863+05:30 WARN  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - SQL Error: 23505, SQLState: 23505
+2026-10-24T12:47:05.863+05:30 WARN  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - SQL Error: 23505, SQLState: 23505
+2026-10-24T12:47:05.863+05:30 ERROR [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - Unique index or primary key violation: "PUBLIC.UK_FILE_IDEMPOTENCY_KEY_INDEX_9 ON PUBLIC.FILE_RECORD(IDEMPOTENCY_KEY NULLS FIRST) VALUES ( /* 2 */ 'parallel-04c0b498-8591-467d-a783-f9ccdce41f6a' )"; SQL statement:
+insert into file_record (content_type,created_at,filename,fingerprint,idempotency_key,response_body,scanner_mode,sha256,size_bytes,status,id) values (?,?,?,?,?,?,?,?,?,?,?) [23505-224]
+2026-10-24T12:47:05.863+05:30 WARN  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - SQL Error: 23505, SQLState: 23505
+2026-10-24T12:47:05.863+05:30 WARN  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - SQL Error: 23505, SQLState: 23505
+2026-10-24T12:47:05.863+05:30 WARN  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - SQL Error: 23505, SQLState: 23505
+2026-10-24T12:47:05.863+05:30 ERROR [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - Unique index or primary key violation: "PUBLIC.UK_FILE_IDEMPOTENCY_KEY_INDEX_9 ON PUBLIC.FILE_RECORD(IDEMPOTENCY_KEY NULLS FIRST) VALUES ( /* 2 */ 'parallel-04c0b498-8591-467d-a783-f9ccdce41f6a' )"; SQL statement:
+insert into file_record (content_type,created_at,filename,fingerprint,idempotency_key,response_body,scanner_mode,sha256,size_bytes,status,id) values (?,?,?,?,?,?,?,?,?,?,?) [23505-224]
+2026-10-24T12:47:05.864+05:30 ERROR [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - Unique index or primary key violation: "PUBLIC.UK_FILE_IDEMPOTENCY_KEY_INDEX_9 ON PUBLIC.FILE_RECORD(IDEMPOTENCY_KEY NULLS FIRST) VALUES ( /* 2 */ 'parallel-04c0b498-8591-467d-a783-f9ccdce41f6a' )"; SQL statement:
+insert into file_record (content_type,created_at,filename,fingerprint,idempotency_key,response_body,scanner_mode,sha256,size_bytes,status,id) values (?,?,?,?,?,?,?,?,?,?,?) [23505-224]
+2026-10-24T12:47:05.864+05:30 ERROR [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - Unique index or primary key violation: "PUBLIC.UK_FILE_IDEMPOTENCY_KEY_INDEX_9 ON PUBLIC.FILE_RECORD(IDEMPOTENCY_KEY NULLS FIRST) VALUES ( /* 2 */ 'parallel-04c0b498-8591-467d-a783-f9ccdce41f6a' )"; SQL statement:
+insert into file_record (content_type,created_at,filename,fingerprint,idempotency_key,response_body,scanner_mode,sha256,size_bytes,status,id) values (?,?,?,?,?,?,?,?,?,?,?) [23505-224]
+2026-10-24T12:47:05.864+05:30 ERROR [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - Unique index or primary key violation: "PUBLIC.UK_FILE_IDEMPOTENCY_KEY_INDEX_9 ON PUBLIC.FILE_RECORD(IDEMPOTENCY_KEY NULLS FIRST) VALUES ( /* 2 */ 'parallel-04c0b498-8591-467d-a783-f9ccdce41f6a' )"; SQL statement:
+insert into file_record (content_type,created_at,filename,fingerprint,idempotency_key,response_body,scanner_mode,sha256,size_bytes,status,id) values (?,?,?,?,?,?,?,?,?,?,?) [23505-224]
+2026-10-24T12:47:05.864+05:30 WARN  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - SQL Error: 23505, SQLState: 23505
+2026-10-24T12:47:05.864+05:30 ERROR [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - Unique index or primary key violation: "PUBLIC.UK_FILE_IDEMPOTENCY_KEY_INDEX_9 ON PUBLIC.FILE_RECORD(IDEMPOTENCY_KEY NULLS FIRST) VALUES ( /* 2 */ 'parallel-04c0b498-8591-467d-a783-f9ccdce41f6a' )"; SQL statement:
+insert into file_record (content_type,created_at,filename,fingerprint,idempotency_key,response_body,scanner_mode,sha256,size_bytes,status,id) values (?,?,?,?,?,?,?,?,?,?,?) [23505-224]
+2026-10-24T12:47:05.864+05:30 ERROR [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] o.h.e.jdbc.spi.SqlExceptionHelper - Unique index or primary key violation: "PUBLIC.UK_FILE_IDEMPOTENCY_KEY_INDEX_9 ON PUBLIC.FILE_RECORD(IDEMPOTENCY_KEY NULLS FIRST) VALUES ( /* 2 */ 'parallel-04c0b498-8591-467d-a783-f9ccdce41f6a' )"; SQL statement:
+insert into file_record (content_type,created_at,filename,fingerprint,idempotency_key,response_body,scanner_mode,sha256,size_bytes,status,id) values (?,?,?,?,?,?,?,?,?,?,?) [23505-224]
+2026-10-24T12:47:05.871+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_replay fileId=bfb00e25-7494-4425-8410-738101bb4ac8
+2026-10-24T12:47:05.871+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_replay fileId=bfb00e25-7494-4425-8410-738101bb4ac8
+2026-10-24T12:47:05.871+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_replay fileId=bfb00e25-7494-4425-8410-738101bb4ac8
+2026-10-24T12:47:05.871+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_replay fileId=bfb00e25-7494-4425-8410-738101bb4ac8
+2026-10-24T12:47:05.871+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_replay fileId=bfb00e25-7494-4425-8410-738101bb4ac8
+2026-10-24T12:47:05.871+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_replay fileId=bfb00e25-7494-4425-8410-738101bb4ac8
+2026-10-24T12:47:05.871+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.bits.secure.intake.IntakeService - idempotency_replay fileId=bfb00e25-7494-4425-8410-738101bb4ac8
+2026-10-24T12:47:05.872+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.872+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.872+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.872+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.872+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.872+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.872+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/files status=201
+2026-10-24T12:47:05.884+05:30 INFO  [intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6] c.b.s.common.CorrelationIdFilter - request method=GET path=/api/v1/files/_evidence/idempotency/parallel-04c0b498-8591-467d-a783-f9ccdce41f6a status=200
+2026-10-24T12:47:07.522+05:30 INFO  [] o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-10-24T12:47:07.527+05:30 INFO  [] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-10-24T12:47:07.529+05:30 INFO  [] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.

@@ -10,4 +10,6 @@ diagrams into the report PDF, which must contain no more than 15 main pages
 excluding appendices. Add the video and Google Drive links and complete the team
 contribution table, individual reflections and AI-use declaration.
 
-The OpenAPI files initially document only the implemented health endpoints.
+Intake includes its business API in `openapi/intake.yaml`. Its implementation,
+BR1/BR2 traceability, ER diagram, testing and limitations are documented in
+`../intake-service/README.md`. The other service contracts remain health-only.

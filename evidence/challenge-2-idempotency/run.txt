@@ -1,0 +1,12 @@
+TIMESTAMP 2026-10-24T07:17:05.555495+00:00
+COMMAND bash scripts/idempotency.sh
+INTAKE_URL http://localhost:54079 PARALLEL_REQUESTS 8
+CORRELATION_ID intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6
+FIRST 201 {"fileId": "d28ddfdb-fb80-479b-a691-c5a3768b6e2b", "filename": "demo.txt", "receivedAt": "2026-10-24T07:17:05.765672Z", "scannerMode": "CLEAN", "status": "RECEIVED"}
+REPLAY 201 {"fileId": "d28ddfdb-fb80-479b-a691-c5a3768b6e2b", "filename": "demo.txt", "receivedAt": "2026-10-24T07:17:05.765672Z", "scannerMode": "CLEAN", "status": "RECEIVED"}
+DIFFERENT_PAYLOAD 409 {"correlationId": "intake-demo-2024e62c-99a9-48fb-818e-db351c40adf6", "error": "Conflict", "fieldErrors": {}, "message": "Idempotency-Key was used with a different payload", "path": "/api/v1/files", "status": 409, "timestamp": "2026-10-24T07:17:05.817574Z"}
+SEQUENTIAL_IDEMPOTENCY_PASS
+SIMULTANEOUS_STATUS_COUNTS {201: 8}
+SIMULTANEOUS_UNIQUE_FILE_IDS 1
+DATABASE_EVIDENCE {"databaseRecordCount": 1, "fileId": "bfb00e25-7494-4425-8410-738101bb4ac8", "idempotencyKey": "parallel-04c0b498-8591-467d-a783-f9ccdce41f6a"}
+CHALLENGE_2_IDEMPOTENCY_PASS
