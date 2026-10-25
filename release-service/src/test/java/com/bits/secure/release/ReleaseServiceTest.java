@@ -33,7 +33,7 @@ class ReleaseServiceTest {
     }
 
     @Test
-    void cleanQuarantinedFileIsReleased() {
+    void cleanAfterQuarantineReleases() {
         when(repository.findById(fileId)).thenReturn(Optional.empty());
         when(repository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0, ReleaseRecord.class));
 
@@ -61,8 +61,17 @@ class ReleaseServiceTest {
         verify(repository, never()).saveAndFlush(any());
     }
 
+    @Test
+    void infectedCannotRelease() {
+        when(repository.findById(fileId)).thenReturn(Optional.empty());
+
+        assertThrows(ConflictException.class,
+                () -> service.release(new ReleaseRequest(fileId, "INFECTED", QUARANTINED_AT)));
+        verify(repository, never()).saveAndFlush(any());
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {"INFECTED", "FAILED", "QUARANTINED", "SCANNING", "clean", "CLEAN "})
+    @ValueSource(strings = {"FAILED", "QUARANTINED", "SCANNING", "clean", "CLEAN "})
     void onlyTheCleanStateCanBeReleased(String state) {
         when(repository.findById(fileId)).thenReturn(Optional.empty());
 

@@ -76,6 +76,16 @@ Intake remains `RECEIVED`; Release does not mutate Intake. Release also does not
 call Quarantine yet, so the quarantine evidence in the request is trusted rather
 than re-verified. That is a known limitation, listed below.
 
+## Assignment traceability
+
+| Requirement | Code | Verification |
+|---|---|---|
+| BR4: only submitted `CLEAN` state with a quarantine timestamp may be released | `ReleaseService.requireReleasable` | `ReleaseServiceTest.infectedCannotRelease`, `cleanAfterQuarantineReleases`, `cleanFileWithoutQuarantineTimestampCannotBeReleased`; `ReleaseHttpTest.unreleasableRequestsReturn409WithoutStoringAnything` |
+| A repeat request returns the original decision without another row | `ReleaseService.release` replay branch | `alreadyReleasedFileReplaysTheOriginalRecordWithoutWriting`; `releaseReadAndRepeatAgreeWithOneStoredRecord` |
+| Simultaneous releases of one file store exactly one row | `ReleaseRecordWriter`, `fileId` primary key | `eightSimultaneousRequestsReleaseOnce`; `simultaneousReleaseRaceReplaysTheCommittedWinner` |
+| Consistent error model and correlation ID | shared `common` handler and filter | `invalidInputReturnsConsistent400WithoutStoringAnything`, `wrongMethodAndContentTypeKeepTheirHttpStatuses`, `healthStillWorks` |
+| Release decisions survive a restart | `application.yml`, file-backed H2 with `update` | `scripts/release-persistence.py`; `evidence/tests/release-persistence.txt` |
+
 ## Data design
 
 ```mermaid
