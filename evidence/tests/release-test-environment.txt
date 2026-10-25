@@ -1,0 +1,8 @@
+CAPTURED_UTC 2026-10-25T08:00:24.671734+00:00
+BRANCH feature/release-service
+JAVA_HOME /Library/Java/JavaVirtualMachines/sapmachine-25.jdk/Contents/Home
+JAVA_RUNTIME 25.0.5 (Maven 3.9.16); compilation target release 21
+SOURCE /Users/C5421903/Documents/Learning/BITS/Scalable Services/scalable-services-assignment
+COMMAND mvn -B -ntp -pl release-service -am package
+RESULT BUILD SUCCESS; Release unit 12 + HTTP/H2 21 = 33 tests; 0 failures/errors/skipped
+RESTART_CHECK python3 scripts/release-persistence.py; RELEASE_PERSISTENCE_PASS; isolated temporary file database
