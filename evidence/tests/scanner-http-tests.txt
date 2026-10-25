@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.bits.secure.scanner.ScannerHttpTest
+-------------------------------------------------------------------------------
+Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.189 s -- in com.bits.secure.scanner.ScannerHttpTest

@@ -1,7 +1,12 @@
 openapi: 3.0.3
 info:
-  title: Scanner Service Scaffold API
-  version: 0.1.0
+  title: Mock Scanner Service API
+  version: 1.0.0
+  description: >
+    Scanner returns a deterministic mock result for a file. It is called only by
+    Quarantine. fileId is the operation identity: a file is scanned at most once,
+    and every later request for it replays the stored result. Scanner owns its
+    own database and does not read another service's data.
 servers:
   - url: http://localhost:8083
 paths:
@@ -17,5 +22,158 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: UP }
-                  service: { type: string }
+                  service: { type: string, example: scanner-service }
                   timestamp: { type: string, format: date-time }
+  /api/v1/scans:
+    post:
+      summary: Execute or replay a deterministic mock scan
+      description: >
+        The first request for a fileId stores an in-progress attempt and runs the
+        scan. CLEAN returns CLEAN, INFECTED returns INFECTED, FAIL returns FAILED
+        and SLOW waits SCANNER_SLOW_MILLIS before returning CLEAN. A repeat for a
+        finished scan returns the identical response. A repeat while the scan is
+        still running, such as a client retry after a read timeout, waits up to
+        SCANNER_IN_FLIGHT_WAIT_MILLIS and then replays the result; it never starts
+        a second scan.
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanRequest'
+            examples:
+              clean:
+                value: { fileId: 7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f, mode: CLEAN }
+              slow:
+                value: { fileId: 7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f, mode: SLOW }
+      responses:
+        '200':
+          description: Scan result, or the stored result replayed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanResponse'
+              examples:
+                clean:
+                  value:
+                    fileId: 7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f
+                    result: CLEAN
+                    message: Deterministic mock result
+                    completedAt: '2026-10-25T08:00:02.431Z'
+                failed:
+                  value:
+                    fileId: 7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f
+                    result: FAILED
+                    message: Deterministic scanner failure
+                    completedAt: '2026-10-25T08:00:02.431Z'
+        '400':
+          description: Malformed JSON, missing or invalid fileId, or a mode outside CLEAN, INFECTED, FAIL, SLOW
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: >
+            The fileId was already submitted with a different mode, or its scan
+            is still running after the in-flight wait. Retrying the same request
+            later is safe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Request body is not JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/scans/{fileId}:
+    get:
+      summary: Read the stored scan attempt for a file
+      parameters:
+        - in: path
+          name: fileId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Stored attempt; result and finishedAt are null while the scan runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanAttempt'
+        '400':
+          description: Path value is not a UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No scan attempt exists for the file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/scans/_evidence/summary:
+    get:
+      summary: Count stored attempts, for duplicate-free retry evidence
+      responses:
+        '200':
+          description: Attempt counts by result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalAttempts: { type: integer, format: int64 }
+                  attemptsByResult:
+                    type: object
+                    properties:
+                      CLEAN: { type: integer, format: int64 }
+                      INFECTED: { type: integer, format: int64 }
+                      FAILED: { type: integer, format: int64 }
+                      IN_PROGRESS: { type: integer, format: int64 }
+components:
+  parameters:
+    CorrelationId:
+      in: header
+      name: X-Correlation-Id
+      required: false
+      description: Echoed in the response and logs; generated when absent.
+      schema: { type: string }
+  schemas:
+    ScanRequest:
+      type: object
+      required: [fileId, mode]
+      properties:
+        fileId: { type: string, format: uuid }
+        mode: { type: string, enum: [CLEAN, INFECTED, FAIL, SLOW] }
+    ScanResponse:
+      type: object
+      properties:
+        fileId: { type: string, format: uuid }
+        result: { type: string, enum: [CLEAN, INFECTED, FAILED] }
+        message: { type: string }
+        completedAt: { type: string, format: date-time }
+    ScanAttempt:
+      type: object
+      properties:
+        fileId: { type: string, format: uuid }
+        mode: { type: string, enum: [CLEAN, INFECTED, FAIL, SLOW] }
+        result: { type: string, enum: [CLEAN, INFECTED, FAILED], nullable: true }
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time, nullable: true }
+    ApiError:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        error: { type: string }
+        message: { type: string }
+        path: { type: string }
+        correlationId: { type: string }
+        fieldErrors:
+          type: object
+          additionalProperties: { type: string }

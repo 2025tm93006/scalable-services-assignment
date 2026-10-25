@@ -48,31 +48,31 @@ paths:
                 value:
                   fileId: 3f2a4e6c-1b2d-4c5e-8f90-123456789abc
                   quarantineState: CLEAN
-        responses:
-          '201':
-            description: Released, or the original release record replayed
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ReleaseResponse'
-          '400':
-            description: Malformed JSON, missing fileId, blank or oversized state, invalid UUID or timestamp
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ApiError'
-          '409':
-            description: Quarantine state is not CLEAN, or quarantinedAt is absent
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ApiError'
-          '415':
-            description: Request body is not JSON
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ApiError'
+      responses:
+        '201':
+          description: Released, or the original release record replayed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseResponse'
+        '400':
+          description: Malformed JSON, missing fileId, blank or oversized state, invalid UUID or timestamp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Quarantine state is not CLEAN, or quarantinedAt is absent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Request body is not JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/releases/{id}:
     get:
       summary: Read a release record

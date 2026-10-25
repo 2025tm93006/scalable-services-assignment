@@ -1,0 +1,7 @@
+CAPTURED_UTC 2026-10-25T18:33:22+00:00
+BRANCH main (uncommitted working tree)
+JAVA_RUNTIME 21.0.13 Temurin (Maven 3.9.9); compilation target release 21
+OS Linux x86_64
+COMMAND mvn -B -ntp -pl scanner-service -am package
+RESULT BUILD SUCCESS; Scanner unit 14 + HTTP/H2 20 = 34 tests; 0 failures/errors/skipped
+RESTART_CHECK python3 scripts/scanner-persistence.py; SCANNER_PERSISTENCE_PASS; isolated temporary file database
