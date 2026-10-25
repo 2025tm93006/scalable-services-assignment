@@ -1,10 +1,70 @@
 openapi: 3.0.3
 info:
-  title: Quarantine Service Scaffold API
-  version: 0.1.0
+  title: Quarantine Service API
+  version: 1.0.0
 servers:
   - url: http://localhost:8082
 paths:
+  /api/v1/quarantine:
+    post:
+      summary: Create a quarantine record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuarantineRequest'
+      responses:
+        '201':
+          description: Quarantine record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuarantineResponse'
+        '400':
+          description: Invalid request
+        '409':
+          description: File already has a quarantine record
+  /api/v1/quarantine/{id}/scan:
+    post:
+      summary: Scan a quarantined file
+      parameters:
+        - $ref: '#/components/parameters/QuarantineId'
+      responses:
+        '200':
+          description: Scan completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuarantineResponse'
+        '404':
+          description: Quarantine record not found
+        '409':
+          description: File has already been scanned
+  /api/v1/quarantine/_evidence/summary:
+    get:
+      summary: Summarize quarantine records by state
+      responses:
+        '200':
+          description: Quarantine record counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuarantineEvidence'
+  /api/v1/quarantine/{id}:
+    get:
+      summary: Get a quarantine record
+      parameters:
+        - $ref: '#/components/parameters/QuarantineId'
+      responses:
+        '200':
+          description: Quarantine record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuarantineResponse'
+        '404':
+          description: Quarantine record not found
   /health:
     get:
       summary: Check service liveness
@@ -19,3 +79,57 @@ paths:
                   status: { type: string, example: UP }
                   service: { type: string }
                   timestamp: { type: string, format: date-time }
+components:
+  parameters:
+    QuarantineId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    QuarantineRequest:
+      type: object
+      required: [fileId, scannerMode]
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        scannerMode:
+          type: string
+          enum: [CLEAN, INFECTED, FAIL, SLOW]
+    QuarantineResponse:
+      type: object
+      required: [id, fileId, state, scannerMode, quarantinedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [QUARANTINED, CLEAN, INFECTED, FAILED]
+        scannerMode:
+          type: string
+        quarantinedAt:
+          type: string
+          format: date-time
+        scannedAt:
+          type: string
+          format: date-time
+          nullable: true
+    QuarantineEvidence:
+      type: object
+      required: [total, byState]
+      properties:
+        total:
+          type: integer
+          format: int64
+        byState:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
