@@ -1,0 +1,8 @@
+TIMESTAMP 2026-10-25T08:00:24.671734+00:00
+COMMAND python3 scripts/release-persistence.py
+DATABASE isolated temporary file-based H2; existing application data is untouched
+BEFORE_RESTART 201 {"fileId": "a3e774cf-e1b6-4618-b13b-1a815e82cda0", "quarantinedAt": "2026-10-24T08:00:00Z", "releasedAt": "2026-10-25T08:00:26.630Z", "state": "RELEASED"}
+FIRST_PROCESS_STOPPED DATABASE_FILE_EXISTS true
+AFTER_RESTART_GET 200 {"fileId": "a3e774cf-e1b6-4618-b13b-1a815e82cda0", "quarantinedAt": "2026-10-24T08:00:00Z", "releasedAt": "2026-10-25T08:00:26.630Z", "state": "RELEASED"}
+AFTER_RESTART_REPLAY 201 {"fileId": "a3e774cf-e1b6-4618-b13b-1a815e82cda0", "quarantinedAt": "2026-10-24T08:00:00Z", "releasedAt": "2026-10-25T08:00:26.630Z", "state": "RELEASED"}
+RELEASE_PERSISTENCE_PASS
