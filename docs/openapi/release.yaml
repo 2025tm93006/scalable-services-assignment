@@ -1,7 +1,10 @@
 openapi: 3.0.3
 info:
-  title: Release Service Scaffold API
-  version: 0.1.0
+  title: Release Service API
+  version: 1.0.0
+  description: >
+    Release verifies that a file has completed quarantine with state CLEAN and
+    records a terminal RELEASED decision. Each service owns its own database.
 servers:
   - url: http://localhost:8084
 paths:
@@ -17,5 +20,120 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: UP }
-                  service: { type: string }
+                  service: { type: string, example: release-service }
                   timestamp: { type: string, format: date-time }
+  /api/v1/releases:
+    post:
+      summary: Release a clean quarantined file
+      description: >
+        Idempotent on fileId. A repeat request returns the original release
+        record with status 201 and never creates a second row. An unreleased
+        file is rejected unless quarantineState is exactly CLEAN and
+        quarantinedAt is present.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseRequest'
+            examples:
+              clean:
+                summary: Releasable file
+                value:
+                  fileId: 3f2a4e6c-1b2d-4c5e-8f90-123456789abc
+                  quarantineState: CLEAN
+                  quarantinedAt: '2026-10-24T08:00:00Z'
+              missingTimestamp:
+                summary: Quarantined but no timestamp, rejected with 409
+                value:
+                  fileId: 3f2a4e6c-1b2d-4c5e-8f90-123456789abc
+                  quarantineState: CLEAN
+        responses:
+          '201':
+            description: Released, or the original release record replayed
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ReleaseResponse'
+          '400':
+            description: Malformed JSON, missing fileId, blank or oversized state, invalid UUID or timestamp
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ApiError'
+          '409':
+            description: Quarantine state is not CLEAN, or quarantinedAt is absent
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ApiError'
+          '415':
+            description: Request body is not JSON
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ApiError'
+  /api/v1/releases/{id}:
+    get:
+      summary: Read a release record
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Release record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseResponse'
+        '400':
+          description: Path value is not a UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: File has not been released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+components:
+  schemas:
+    ReleaseRequest:
+      type: object
+      required: [fileId, quarantineState]
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        quarantineState:
+          type: string
+          maxLength: 32
+          description: Compared exactly with CLEAN; other values are a business conflict.
+        quarantinedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Omit or send null to be rejected with 409 rather than 400.
+    ReleaseResponse:
+      type: object
+      properties:
+        fileId: { type: string, format: uuid }
+        state: { type: string, example: RELEASED }
+        quarantinedAt: { type: string, format: date-time }
+        releasedAt: { type: string, format: date-time }
+    ApiError:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        error: { type: string }
+        message: { type: string }
+        path: { type: string }
+        correlationId: { type: string }
+        fieldErrors:
+          type: object
+          additionalProperties: { type: string }
