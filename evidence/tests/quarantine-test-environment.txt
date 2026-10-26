@@ -1,10 +1,21 @@
-CAPTURED_UTC 2026-10-26T12:10:09+00:00
-BRANCH main
+CAPTURED_UTC 2026-10-26T13:49:47+00:00
+BRANCH fix/quarantine-persistence-and-jdk-build
 JAVA_HOME /Library/Java/JavaVirtualMachines/sapmachine-25.jdk/Contents/Home
 JAVA_RUNTIME 25.0.5 (Maven 3.9.16); compilation target release 21
 OS macOS 27.0.1 arm64
 SOURCE /Users/C5421903/Documents/Learning/BITS/Scalable Services/scalable-services-assignment
-COMMAND mvn -B -ntp -pl quarantine-service -am package
-RESULT BUILD SUCCESS; Quarantine unit 9 + HTTP/H2 1 = 10 tests; 0 failures/errors/skipped
-RESTART_CHECK python3 scripts/quarantine-persistence.py; QUARANTINE_PERSISTENCE_PASS; isolated temporary file database
+COMMAND mvn -B -ntp clean package
+RESULT BUILD SUCCESS; Quarantine unit 12 + client 8 + HTTP/H2 1 + scan resilience 7 = 28 tests; 0 failures/errors/skipped
+COVERAGE QuarantineServiceTest (BR3 state machine, create race, capacity, outages),
+  ScannerClientTest (retry curve, jitter bounds, exponent cap, failure reason, budget validation),
+  QuarantineHttpTest (create/scan/read/summary over real HTTP and H2),
+  QuarantineScanResilienceTest (retry, budget exhaustion, read timeout, capacity refusal,
+  20 parallel scans against 2 slots, correlation forwarding, no rescan of a FAILED file)
+TEST_ISOLATION every test uses an in-memory H2 database; QuarantineScanResilienceTest runs a
+  stub Scanner @RestController in the same test application on port 18093, so no external
+  Scanner process is needed and no other service is started by the suite
+CHALLENGE_SCRIPTS python3 scripts/concurrency.py and python3 scripts/resilience.py start the
+  packaged JARs on ephemeral ports against temporary file databases; their output is in
+  evidence/challenge-1-concurrency/run.txt and evidence/challenge-3a-resilience/run.txt
+RESTART_CHECK python3 scripts/quarantine-persistence.py; QUARANTINE_PERSISTENCE_PASS; isolated temporary file database, Scanner started alongside so the stored verdict came over REST
 NOTE Surefire runs with -Dnet.bytebuddy.experimental=true (root pom) so the same build is green on Java 21 and Java 25
