@@ -2,19 +2,24 @@
 
 Assignment 1 for Scalable Services SEZG583. The project has four independent
 Spring Boot entry points, isolated H2 configuration, correlation IDs and GET /health.
-Intake includes metadata acceptance and idempotency. Release verifies clean
-quarantine state and records the release decision. Scanner returns deterministic
-mock results and replays a stored result for a repeated or retried file.
-Quarantine currently contains its service entry point and health endpoint.
+Intake accepts metadata and deduplicates repeated intake requests. Quarantine
+records a file, moves it through its scan states and refuses a second quarantine
+or a second scan. Scanner returns deterministic mock results and replays a stored
+result for a repeated or retried file. Release verifies clean quarantine state and
+records the release decision.
 
 ## Prerequisites
 
 JDK 21 or later and Maven 3.9 or later. Maven must be able to resolve public
-dependencies. All database credentials here are local demonstration values.
+dependencies. The build compiles at Java 21 bytecode and the test suite is verified
+on Temurin 21 and SapMachine 25; Surefire passes `-Dnet.bytebuddy.experimental=true`
+so Mockito can mock service classes on JDKs newer than the Byte Buddy version
+Spring Boot 3.3.5 ships. All database credentials here are local demonstration values.
 
 ## Build and run
 
-From this folder, run `mvn clean package`. Intake, Scanner and Release include unit and HTTP/database tests.
+From this folder, run `mvn clean package`. Every service includes unit and
+HTTP/database tests (113 tests in total).
 Run each command in a separate terminal after packaging:
 
 ```bash
@@ -32,10 +37,15 @@ java -jar release-service/target/release-service-1.0.0-SNAPSHOT.jar
 | Release | Verify quarantine state and permit clean release | 8084 |
 
 With all services running, run `bash scripts/health.sh`. Ctrl-C stops each service.
-Intake, Scanner and Release store their H2 databases in `data/intake.mv.db`,
-`data/scanner.mv.db` and `data/release.mv.db` and preserve records across restarts. Start each service from
+All four services store their H2 databases in `data/intake.mv.db`,
+`data/quarantine.mv.db`, `data/scanner.mv.db` and `data/release.mv.db` and preserve
+records across restarts. Start each service from
 the repository root so it uses the same relative database path every time.
-Quarantine currently uses an in-memory database.
+`scripts/persistence.py`, `scripts/quarantine-persistence.py`,
+`scripts/scanner-persistence.py` and `scripts/release-persistence.py` prove that
+durability by restarting each service against a temporary file database.
+Each service runs its own tests against a separate in-memory database, so the
+test suite never writes into `data/`.
 Each service has its own database URL and credentials. For overrides, export SERVER_PORT, DB_URL,
 DB_USERNAME, DB_PASSWORD, DB_DRIVER and DDL_AUTO in that service's terminal;
 see its `.env.example`. These files are examples and are not loaded automatically.
