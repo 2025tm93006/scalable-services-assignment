@@ -2,7 +2,10 @@
 
 All four services cover their business rules and actual HTTP requests against an
 isolated in-memory H2 database, so `mvn clean package` never writes into `data/`.
-No other business service is needed for these tests.
+Intake, Scanner and Release need no other service. Quarantine's scan tests run a stub
+Scanner `@RestController` inside the same test application on the same port, so the
+timeouts, retries and capacity limits are exercised over real HTTP without starting a
+second process.
 
 From the repository root:
 
@@ -21,10 +24,10 @@ With the separate Maven settings from local setup, add `-s ../maven-settings.xml
 | `intake-http-tests.txt` | Surefire report for real HTTP/H2 replay, concurrency, validation, errors and correlation |
 | `intake-test-environment.txt` | Test command, runtime and where the tested source copy was located |
 | `intake-persistence.txt` | A real process restart preserves the original response and a single database row |
-| `quarantine-unit-tests.txt` | Surefire report for BR3: one quarantine per file, one scan per record, mode-to-state mapping, not-found and the evidence summary |
-| `quarantine-http-tests.txt` | Surefire report for a real HTTP/H2 quarantine, scan, read and summary |
+| `quarantine-unit-tests.txt` | Surefire reports for BR3 in isolation: one quarantine per file, the create race answered as a conflict, Scanner verdicts, outages, unexpected verdicts, exhausted capacity, and the `ScannerClient` retry curve and failure reporting |
+| `quarantine-http-tests.txt` | Surefire reports for real HTTP/H2 quarantine and scan, including timeout, retry, exhaustion, the 20-parallel capacity burst and correlation forwarding to the stub Scanner |
 | `quarantine-test-environment.txt` | Quarantine test command, runtime and result summary |
-| `quarantine-persistence.txt` | A real process restart keeps the scan state, refuses a second quarantine with 409 and a second scan with 409 |
+| `quarantine-persistence.txt` | A real process restart keeps the state Scanner reported, the timestamps and the unique `fileId`, so a replayed create is 409 and a replayed scan is 409 |
 | `e2e-run.txt` | `scripts/e2e.sh` driving one transaction through Intake, Quarantine, Scanner and Release with its failure cases |
 | `release-unit-tests.txt` | Surefire report for BR4, replay, the primary-key race and unrelated-failure handling |
 | `release-http-tests.txt` | Surefire report for replay, 8 simultaneous releases, validation, errors and correlation |
@@ -78,3 +81,17 @@ With all four services running, capture the scripted end-to-end transaction:
 ```bash
 bash scripts/e2e.sh 2>&1 | tee evidence/tests/e2e-run.txt
 ```
+
+`evidence/tests/e2e-run.txt` also carries the Quarantine and Scanner log lines of the
+correlated cross-service scan, which is the proof that the scan really left the process.
+
+The two engineering-challenge scripts need no running services; they start and stop
+their own JARs:
+
+```bash
+python3 scripts/concurrency.py 2>&1 | tee evidence/challenge-1-concurrency/run.txt
+python3 scripts/resilience.py 2>&1 | tee evidence/challenge-3a-resilience/run.txt
+```
+
+Both exit non-zero if any asserted invariant breaks, so the captured file is a test
+result and not a transcript.
