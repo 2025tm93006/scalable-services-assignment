@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Scripted end-to-end test of the main transaction: Intake -> Quarantine -> Scanner -> Release.
+# Scanner is reached through Quarantine, which is the only service that calls another
+# service; the script then reads the attempt back from Scanner to prove the call happened.
 # It proves BR1 (replay), BR2 (key reuse), BR3 (quarantine state machine), BR4 (clean-only
 # release) and exercises the failure paths, not just the happy path.
 # Start all four services first (see README) and run this from the repository root.
@@ -59,18 +61,25 @@ expect 409 "BR2 same key with a different payload"
 request GET "$INTAKE/api/v1/files/$FILE_ID" ''
 expect 200 "BR2 original record is still readable"
 
-# BR3 - quarantine the file, scan it with the Scanner service and transition its state once.
+# BR3 - quarantine the file, let Quarantine call Scanner, and transition the state once.
 request POST "$QUARANTINE/api/v1/quarantine" "{\"fileId\":\"$FILE_ID\",\"scannerMode\":\"CLEAN\"}"
 expect 201 "quarantine record created"
 QUARANTINE_ID=$(field id)
 QUARANTINED_AT=$(field quarantinedAt)
 request POST "$QUARANTINE/api/v1/quarantine" "{\"fileId\":\"$FILE_ID\",\"scannerMode\":\"CLEAN\"}"
 expect 409 "BR3 the same file cannot be quarantined twice"
-request POST "$SCANNER/api/v1/scans" "{\"fileId\":\"$FILE_ID\",\"mode\":\"CLEAN\"}"
-expect 200 "scanner returned a deterministic result"
+request GET "$SCANNER/api/v1/scans/$FILE_ID" ''
+expect 404 "Scanner has not seen this file before Quarantine scans it"
 request POST "$QUARANTINE/api/v1/quarantine/$QUARANTINE_ID/scan" ''
 expect 200 "quarantine scan transition"
 [ "$(field state)" = "CLEAN" ] || fail "BR3: expected state CLEAN, got $(field state)"
+QUARANTINE_SCANNED_AT=$(field scannedAt)
+request GET "$SCANNER/api/v1/scans/$FILE_ID" ''
+expect 200 "the scan Quarantine triggered is stored in Scanner's own database"
+[ "$(field result)" = "CLEAN" ] || fail "cross-service call: Scanner stored $(field result)"
+[ "$(field finishedAt)" = "$QUARANTINE_SCANNED_AT" ] \
+  || fail "Quarantine kept its own timestamp instead of Scanner's: $QUARANTINE_SCANNED_AT vs $(field finishedAt)"
+echo "ok  cross-service scan: Quarantine state and Scanner's finishedAt agree"
 request POST "$QUARANTINE/api/v1/quarantine/$QUARANTINE_ID/scan" ''
 expect 409 "BR3 a scanned record cannot be scanned again"
 
@@ -91,4 +100,31 @@ expect 201 "release replay of the repeated request"
 request GET "$RELEASE/api/v1/releases/$FILE_ID" ''
 expect 200 "release record is readable"
 
-echo "E2E PASS fileId=$FILE_ID correlationId=$CORRELATION at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# The failure path of the same transaction: a file Scanner reports as infected never
+# reaches Release, and the refusal comes from Quarantine's own verdict, not from a
+# value the client typed in.
+DIRTY_KEY="e2e-infected-$(date +%s)"
+DIRTY_PAYLOAD="{\"filename\":\"malware.exe\",\"contentType\":\"application/octet-stream\",\"sizeBytes\":11,\"sha256\":\"$SHA\",\"scannerMode\":\"INFECTED\"}"
+request POST "$INTAKE/api/v1/files" "$DIRTY_PAYLOAD" "$DIRTY_KEY"
+expect 201 "intake accepted the file that will be found infected"
+DIRTY_FILE_ID=$(field fileId)
+request POST "$QUARANTINE/api/v1/quarantine" "{\"fileId\":\"$DIRTY_FILE_ID\",\"scannerMode\":\"INFECTED\"}"
+expect 201 "the infected file is quarantined"
+DIRTY_QUARANTINE_ID=$(field id)
+request POST "$QUARANTINE/api/v1/quarantine/$DIRTY_QUARANTINE_ID/scan" ''
+expect 200 "the infected file is scanned"
+[ "$(field state)" = "INFECTED" ] || fail "expected INFECTED, got $(field state)"
+DIRTY_QUARANTINED_AT=$(field quarantinedAt)
+request POST "$RELEASE/api/v1/releases" \
+  "{\"fileId\":\"$DIRTY_FILE_ID\",\"quarantineState\":\"INFECTED\",\"quarantinedAt\":\"$DIRTY_QUARANTINED_AT\"}"
+expect 409 "BR4 the genuinely infected file is refused its release"
+request GET "$RELEASE/api/v1/releases/$DIRTY_FILE_ID" ''
+expect 404 "BR4 nothing was stored for the refused file"
+
+# Capacity is a shared, contended resource: while both scanner slots are held a third
+# scan is refused rather than queued silently. See scripts/concurrency.py for the burst.
+request GET "$QUARANTINE/api/v1/quarantine/_evidence/summary" ''
+expect 200 "quarantine reports its own state"
+echo "ok  final quarantine summary: $BODY"
+
+echo "E2E PASS fileId=$FILE_ID infectedFileId=$DIRTY_FILE_ID correlationId=$CORRELATION at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
