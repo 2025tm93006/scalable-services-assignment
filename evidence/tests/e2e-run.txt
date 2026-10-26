@@ -1,0 +1,21 @@
+E2E started at 2026-10-26T12:14:23Z correlationId=e2e-20261026121423
+ok  health http://localhost:8081 -> HTTP 200
+ok  health http://localhost:8082 -> HTTP 200
+ok  health http://localhost:8083 -> HTTP 200
+ok  health http://localhost:8084 -> HTTP 200
+ok  intake first submission -> HTTP 201
+ok  intake replay of the same key and payload -> HTTP 201
+ok  BR1 replayed body is byte-identical
+ok  BR2 same key with a different payload -> HTTP 409
+ok  BR2 original record is still readable -> HTTP 200
+ok  quarantine record created -> HTTP 201
+ok  BR3 the same file cannot be quarantined twice -> HTTP 409
+ok  scanner returned a deterministic result -> HTTP 200
+ok  quarantine scan transition -> HTTP 200
+ok  BR3 a scanned record cannot be scanned again -> HTTP 409
+ok  release record is absent before the release -> HTTP 404
+ok  BR4 an infected file is refused -> HTTP 409
+ok  release accepted the clean file -> HTTP 201
+ok  release replay of the repeated request -> HTTP 201
+ok  release record is readable -> HTTP 200
+E2E PASS fileId=d87e27cd-ef89-4976-a354-ae7e259cabd4 correlationId=e2e-20261026121423 at 2026-10-26T12:14:24Z
