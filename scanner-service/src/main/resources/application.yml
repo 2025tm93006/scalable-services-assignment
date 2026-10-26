@@ -4,14 +4,20 @@ spring:
   application:
     name: scanner-service
   datasource:
-    url: ${DB_URL:jdbc:h2:mem:scanner;DB_CLOSE_DELAY=-1}
+    url: ${DB_URL:jdbc:h2:file:./data/scanner}
     username: ${DB_USERNAME:scanner_user}
     password: ${DB_PASSWORD:scanner_local_demo}
     driver-class-name: ${DB_DRIVER:org.h2.Driver}
   jpa:
     hibernate:
-      ddl-auto: ${DDL_AUTO:create-drop}
+      ddl-auto: ${DDL_AUTO:update}
     open-in-view: false
+scanner:
+  # SLOW mode delay. Set above Quarantine's read timeout to demonstrate a timeout and retry.
+  slow-millis: ${SCANNER_SLOW_MILLIS:2000}
+  # How long a repeated request for an in-progress scan waits before answering 409.
+  in-flight-wait-millis: ${SCANNER_IN_FLIGHT_WAIT_MILLIS:4000}
+  in-flight-poll-millis: ${SCANNER_IN_FLIGHT_POLL_MILLIS:50}
 logging:
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %logger{36} - %msg%n"
