@@ -42,6 +42,10 @@ public class QuarantineRecord {
         this.state = QuarantineState.QUARANTINED;
     }
 
+    void startScan() {
+        this.state = QuarantineState.SCANNING;
+    }
+
     void completeScan(QuarantineState result, Instant timestamp) {
         this.state = result;
         this.scannedAt = timestamp;

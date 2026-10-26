@@ -12,6 +12,18 @@ spring:
     hibernate:
       ddl-auto: ${DDL_AUTO:update}
     open-in-view: false
+quarantine:
+  # Scanner capacity. A scan only runs while it owns one of these slots.
+  max-concurrent-scans: ${MAX_CONCURRENT_SCANS:2}
+scanner:
+  base-url: ${SCANNER_BASE_URL:http://localhost:8083}
+  connect-timeout-millis: ${SCANNER_CONNECT_TIMEOUT_MILLIS:300}
+  # Above this the call is treated as a failed attempt and retried with backoff.
+  read-timeout-millis: ${SCANNER_READ_TIMEOUT_MILLIS:5000}
+  max-attempts: ${SCANNER_MAX_ATTEMPTS:3}
+  # Delay is retry-base * 2^(attempt-1) plus a random 0..retry-jitter milliseconds.
+  retry-base-millis: ${SCANNER_RETRY_BASE_MILLIS:100}
+  retry-jitter-millis: ${SCANNER_RETRY_JITTER_MILLIS:100}
 logging:
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %logger{36} - %msg%n"
