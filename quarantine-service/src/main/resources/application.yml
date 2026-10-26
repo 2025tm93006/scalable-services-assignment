@@ -4,13 +4,13 @@ spring:
   application:
     name: quarantine-service
   datasource:
-    url: ${DB_URL:jdbc:h2:mem:quarantine;DB_CLOSE_DELAY=-1}
+    url: ${DB_URL:jdbc:h2:file:./data/quarantine}
     username: ${DB_USERNAME:quarantine_user}
     password: ${DB_PASSWORD:quarantine_local_demo}
     driver-class-name: ${DB_DRIVER:org.h2.Driver}
   jpa:
     hibernate:
-      ddl-auto: ${DDL_AUTO:create-drop}
+      ddl-auto: ${DDL_AUTO:update}
     open-in-view: false
 logging:
   pattern:
