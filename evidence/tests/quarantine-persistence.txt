@@ -1,0 +1,11 @@
+TIMESTAMP 2026-10-26T12:09:56.136761+00:00
+COMMAND python3 scripts/quarantine-persistence.py
+DATABASE isolated temporary file-based H2; existing application data is untouched
+BEFORE_RESTART_CREATE 201 {"fileId": "64d94130-fe8b-43bd-8289-9922993e9e39", "id": "fd5454d9-c61f-48fd-b07c-ccf0626a6314", "quarantinedAt": "2026-10-26T12:09:58.109640Z", "scannedAt": null, "scannerMode": "INFECTED", "state": "QUARANTINED"}
+BEFORE_RESTART_SCAN 200 {"fileId": "64d94130-fe8b-43bd-8289-9922993e9e39", "id": "fd5454d9-c61f-48fd-b07c-ccf0626a6314", "quarantinedAt": "2026-10-26T12:09:58.109640Z", "scannedAt": "2026-10-26T12:09:58.136777Z", "scannerMode": "INFECTED", "state": "INFECTED"}
+FIRST_PROCESS_STOPPED DATABASE_FILE_EXISTS true
+AFTER_RESTART_GET 200 {"fileId": "64d94130-fe8b-43bd-8289-9922993e9e39", "id": "fd5454d9-c61f-48fd-b07c-ccf0626a6314", "quarantinedAt": "2026-10-26T12:09:58.109640Z", "scannedAt": "2026-10-26T12:09:58.136777Z", "scannerMode": "INFECTED", "state": "INFECTED"}
+AFTER_RESTART_DUPLICATE_CREATE 409 {"correlationId": "quarantine-persistence-test", "error": "Conflict", "fieldErrors": {}, "message": "File is already quarantined", "path": "/api/v1/quarantine", "status": 409, "timestamp": "2026-10-26T12:10:00.204766Z"}
+AFTER_RESTART_SECOND_SCAN 409 {"correlationId": "quarantine-persistence-test", "error": "Conflict", "fieldErrors": {}, "message": "File has already been scanned", "path": "/api/v1/quarantine/fd5454d9-c61f-48fd-b07c-ccf0626a6314/scan", "status": 409, "timestamp": "2026-10-26T12:10:00.209550Z"}
+AFTER_RESTART_EVIDENCE {"byState": {"CLEAN": 0, "FAILED": 0, "INFECTED": 1, "QUARANTINED": 0}, "total": 1}
+QUARANTINE_PERSISTENCE_PASS

@@ -1,0 +1,10 @@
+CAPTURED_UTC 2026-10-26T12:10:09+00:00
+BRANCH main
+JAVA_HOME /Library/Java/JavaVirtualMachines/sapmachine-25.jdk/Contents/Home
+JAVA_RUNTIME 25.0.5 (Maven 3.9.16); compilation target release 21
+OS macOS 27.0.1 arm64
+SOURCE /Users/C5421903/Documents/Learning/BITS/Scalable Services/scalable-services-assignment
+COMMAND mvn -B -ntp -pl quarantine-service -am package
+RESULT BUILD SUCCESS; Quarantine unit 9 + HTTP/H2 1 = 10 tests; 0 failures/errors/skipped
+RESTART_CHECK python3 scripts/quarantine-persistence.py; QUARANTINE_PERSISTENCE_PASS; isolated temporary file database
+NOTE Surefire runs with -Dnet.bytebuddy.experimental=true (root pom) so the same build is green on Java 21 and Java 25
