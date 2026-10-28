@@ -1,0 +1,62 @@
+COMMAND bash scripts/e2e.sh
+WHEN 2026-10-26T13:56:51Z
+ENVIRONMENT openjdk version 25.0.5.0.3 2026-10-24 LTS | Apache Maven 3.9.16 | four packaged service JARs on 8081-8084, file-based H2 per service
+CONFIG MAX_CONCURRENT_SCANS=2 SCANNER_BASE_URL=http://localhost:8083 SCANNER_READ_TIMEOUT_MILLIS=5000 SCANNER_MAX_ATTEMPTS=3
+RESULT E2E_EXIT=0, 30 lines, every asserted status matched
+
+E2E started at 2026-10-26T13:55:55Z correlationId=e2e-20261026135555
+ok  health http://localhost:8081 -> HTTP 200
+ok  health http://localhost:8082 -> HTTP 200
+ok  health http://localhost:8083 -> HTTP 200
+ok  health http://localhost:8084 -> HTTP 200
+ok  intake first submission -> HTTP 201
+ok  intake replay of the same key and payload -> HTTP 201
+ok  BR1 replayed body is byte-identical
+ok  BR2 same key with a different payload -> HTTP 409
+ok  BR2 original record is still readable -> HTTP 200
+ok  quarantine record created -> HTTP 201
+ok  BR3 the same file cannot be quarantined twice -> HTTP 409
+ok  Scanner has not seen this file before Quarantine scans it -> HTTP 404
+ok  quarantine scan transition -> HTTP 200
+ok  the scan Quarantine triggered is stored in Scanner's own database -> HTTP 200
+ok  cross-service scan: Quarantine state and Scanner's finishedAt agree
+ok  BR3 a scanned record cannot be scanned again -> HTTP 409
+ok  release record is absent before the release -> HTTP 404
+ok  BR4 an infected file is refused -> HTTP 409
+ok  release accepted the clean file -> HTTP 201
+ok  release replay of the repeated request -> HTTP 201
+ok  release record is readable -> HTTP 200
+ok  intake accepted the file that will be found infected -> HTTP 201
+ok  the infected file is quarantined -> HTTP 201
+ok  the infected file is scanned -> HTTP 200
+ok  BR4 the genuinely infected file is refused its release -> HTTP 409
+ok  BR4 nothing was stored for the refused file -> HTTP 404
+ok  quarantine reports its own state -> HTTP 200
+ok  final quarantine summary: {"total":4,"byState":{"QUARANTINED":0,"SCANNING":0,"CLEAN":2,"INFECTED":2,"FAILED":0},"scannerSlots":{"FREE":2,"HELD":0},"capacity":2}
+E2E PASS fileId=b9597612-b4f0-4503-a5aa-7b419a387133 infectedFileId=36e96f33-f88b-40f4-aca6-f0789dca5153 correlationId=e2e-20261026135555 at 2026-10-26T13:55:56Z
+
+QUARANTINE_LOG the cross-service scans, correlationId=e2e-20261026135555
+  2026-10-26T19:25:55.909+05:30 INFO  [e2e-20261026135555] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/quarantine status=201
+  2026-10-26T19:25:55.977+05:30 INFO  [e2e-20261026135555] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/quarantine status=409
+  2026-10-26T19:25:56.087+05:30 INFO  [e2e-20261026135555] c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=b9597612-b4f0-4503-a5aa-7b419a387133 slot=1 capacity=2
+  2026-10-26T19:25:56.090+05:30 INFO  [e2e-20261026135555] c.b.s.quarantine.QuarantineService - scan_started fileId=b9597612-b4f0-4503-a5aa-7b419a387133 recordId=a00b3191-cedb-4cfd-bc8e-94349ed67aab slot=1 mode=CLEAN
+  2026-10-26T19:25:56.090+05:30 INFO  [e2e-20261026135555] c.b.secure.quarantine.ScannerClient - scanner_call fileId=b9597612-b4f0-4503-a5aa-7b419a387133 attempt=1 maxAttempts=3 mode=CLEAN
+  2026-10-26T19:25:56.180+05:30 INFO  [e2e-20261026135555] c.b.s.quarantine.QuarantineService - scan_settled fileId=b9597612-b4f0-4503-a5aa-7b419a387133 state=CLEAN slot=1
+  2026-10-26T19:25:56.182+05:30 INFO  [e2e-20261026135555] c.b.s.quarantine.ScanCapacityService - scanner_slot_released fileId=b9597612-b4f0-4503-a5aa-7b419a387133 slot=1 rowsUpdated=1
+  2026-10-26T19:25:56.183+05:30 INFO  [e2e-20261026135555] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/quarantine/a00b3191-cedb-4cfd-bc8e-94349ed67aab/scan status=200
+  2026-10-26T19:25:56.312+05:30 INFO  [e2e-20261026135555] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/quarantine/a00b3191-cedb-4cfd-bc8e-94349ed67aab/scan status=409
+  2026-10-26T19:25:56.536+05:30 INFO  [e2e-20261026135555] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/quarantine status=201
+  2026-10-26T19:25:56.578+05:30 INFO  [e2e-20261026135555] c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=36e96f33-f88b-40f4-aca6-f0789dca5153 slot=1 capacity=2
+  2026-10-26T19:25:56.579+05:30 INFO  [e2e-20261026135555] c.b.s.quarantine.QuarantineService - scan_started fileId=36e96f33-f88b-40f4-aca6-f0789dca5153 recordId=ba0364e5-951b-4b6f-a36a-2874897915b3 slot=1 mode=INFECTED
+  2026-10-26T19:25:56.579+05:30 INFO  [e2e-20261026135555] c.b.secure.quarantine.ScannerClient - scanner_call fileId=36e96f33-f88b-40f4-aca6-f0789dca5153 attempt=1 maxAttempts=3 mode=INFECTED
+  2026-10-26T19:25:56.586+05:30 INFO  [e2e-20261026135555] c.b.s.quarantine.QuarantineService - scan_settled fileId=36e96f33-f88b-40f4-aca6-f0789dca5153 state=INFECTED slot=1
+  2026-10-26T19:25:56.586+05:30 INFO  [e2e-20261026135555] c.b.s.quarantine.ScanCapacityService - scanner_slot_released fileId=36e96f33-f88b-40f4-aca6-f0789dca5153 slot=1 rowsUpdated=1
+  2026-10-26T19:25:56.587+05:30 INFO  [e2e-20261026135555] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/quarantine/ba0364e5-951b-4b6f-a36a-2874897915b3/scan status=200
+
+SCANNER_LOG the attempts Quarantine triggered
+  2026-10-26T19:25:56.159+05:30 INFO  [e2e-20261026135555] c.bits.secure.scanner.ScannerService - scan_started fileId=b9597612-b4f0-4503-a5aa-7b419a387133 mode=CLEAN
+  2026-10-26T19:25:56.167+05:30 INFO  [e2e-20261026135555] c.bits.secure.scanner.ScannerService - scan_completed fileId=b9597612-b4f0-4503-a5aa-7b419a387133 mode=CLEAN result=CLEAN durationMillis=20
+  2026-10-26T19:25:56.169+05:30 INFO  [e2e-20261026135555] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/scans status=200
+  2026-10-26T19:25:56.583+05:30 INFO  [e2e-20261026135555] c.bits.secure.scanner.ScannerService - scan_started fileId=36e96f33-f88b-40f4-aca6-f0789dca5153 mode=INFECTED
+  2026-10-26T19:25:56.584+05:30 INFO  [e2e-20261026135555] c.bits.secure.scanner.ScannerService - scan_completed fileId=36e96f33-f88b-40f4-aca6-f0789dca5153 mode=INFECTED result=INFECTED durationMillis=1
+  2026-10-26T19:25:56.584+05:30 INFO  [e2e-20261026135555] c.b.s.common.CorrelationIdFilter - request method=POST path=/api/v1/scans status=200

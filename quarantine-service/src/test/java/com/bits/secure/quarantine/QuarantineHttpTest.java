@@ -13,7 +13,15 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, properties = {
+        "spring.datasource.url=jdbc:h2:mem:quarantine-http-test;DB_CLOSE_DELAY=-1",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "server.port=18082",
+        // The scan now calls Scanner over REST, so it is pointed at the stub controller.
+        "scanner.base-url=http://localhost:18082",
+        "scanner.max-attempts=1",
+        "quarantine.max-concurrent-scans=2"
+})
 class QuarantineHttpTest {
     @Autowired
     private TestRestTemplate http;
@@ -23,6 +31,7 @@ class QuarantineHttpTest {
 
     @BeforeEach
     void clearRecords() {
+        StubScannerSupport.reset(0, 0);
         repository.deleteAll();
     }
 

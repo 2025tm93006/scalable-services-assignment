@@ -1,0 +1,13 @@
+TIMESTAMP 2026-10-26T13:50:02.454084+00:00
+COMMAND python3 scripts/quarantine-persistence.py
+CORRELATION_ID quarantine-persistence-eace5b85-0b4e-4a69-b7f3-b1dd535f9214
+DATABASE isolated temporary file-based H2; existing application data is untouched
+BEFORE_RESTART_CREATE 201 {"fileId": "ce54e3eb-ddb0-4d8f-86b4-d448f34a12e8", "id": "9ce0ad52-e86d-4c97-a48c-dc00f0cd1936", "quarantinedAt": "2026-10-26T13:50:06.120795Z", "scannedAt": null, "scannerMode": "INFECTED", "state": "QUARANTINED"}
+BEFORE_RESTART_SCAN 200 {"fileId": "ce54e3eb-ddb0-4d8f-86b4-d448f34a12e8", "id": "9ce0ad52-e86d-4c97-a48c-dc00f0cd1936", "quarantinedAt": "2026-10-26T13:50:06.120795Z", "scannedAt": "2026-10-26T13:50:06.253Z", "scannerMode": "INFECTED", "state": "INFECTED"}
+BEFORE_RESTART_SCANNER_STORED 200 {"fileId": "ce54e3eb-ddb0-4d8f-86b4-d448f34a12e8", "finishedAt": "2026-10-26T13:50:06.253Z", "mode": "INFECTED", "result": "INFECTED", "startedAt": "2026-10-26T13:50:06.239Z"}
+FIRST_PROCESS_STOPPED DATABASE_FILE_EXISTS true
+AFTER_RESTART_GET 200 {"fileId": "ce54e3eb-ddb0-4d8f-86b4-d448f34a12e8", "id": "9ce0ad52-e86d-4c97-a48c-dc00f0cd1936", "quarantinedAt": "2026-10-26T13:50:06.120795Z", "scannedAt": "2026-10-26T13:50:06.253Z", "scannerMode": "INFECTED", "state": "INFECTED"}
+AFTER_RESTART_DUPLICATE_CREATE 409 {"correlationId": "quarantine-persistence-eace5b85-0b4e-4a69-b7f3-b1dd535f9214", "error": "Conflict", "fieldErrors": {}, "message": "File is already quarantined", "path": "/api/v1/quarantine", "status": 409, "timestamp": "2026-10-26T13:50:09.009684Z"}
+AFTER_RESTART_SECOND_SCAN 409 {"correlationId": "quarantine-persistence-eace5b85-0b4e-4a69-b7f3-b1dd535f9214", "error": "Conflict", "fieldErrors": {}, "message": "File has already been scanned", "path": "/api/v1/quarantine/9ce0ad52-e86d-4c97-a48c-dc00f0cd1936/scan", "status": 409, "timestamp": "2026-10-26T13:50:09.014084Z"}
+AFTER_RESTART_EVIDENCE {"byState": {"CLEAN": 0, "FAILED": 0, "INFECTED": 1, "QUARANTINED": 0, "SCANNING": 0}, "capacity": 2, "scannerSlots": {"FREE": 2, "HELD": 0}, "total": 1}
+QUARANTINE_PERSISTENCE_PASS

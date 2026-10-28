@@ -2,12 +2,26 @@ openapi: 3.0.3
 info:
   title: Quarantine Service API
   version: 1.0.0
+  description: >
+    Quarantine owns the quarantine record and its state machine. It is the only
+    service that calls another service: a scan claims one scanner capacity slot,
+    asks Scanner over REST with connect and read timeouts, retries with exponential
+    backoff plus jitter, and stores Scanner's verdict. A record settles once and is
+    never transitioned again, and a Scanner that stays unreachable settles the file
+    as FAILED instead of leaving the caller with a half-run scan.
 servers:
   - url: http://localhost:8082
 paths:
   /api/v1/quarantine:
     post:
       summary: Create a quarantine record
+      description: >
+        fileId is the operation identity. A repeat for a file that already has a
+        record conflicts, and so does the losing request of two simultaneous
+        creations of the same file: the unique fileId index decides the winner and
+        the loser is reported as the same 409 a sequential repeat gets.
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
       requestBody:
         required: true
         content:
@@ -17,6 +31,8 @@ paths:
       responses:
         '201':
           description: Quarantine record created
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
           content:
             application/json:
               schema:
@@ -24,15 +40,23 @@ paths:
         '400':
           description: Invalid request
         '409':
-          description: File already has a quarantine record
+          description: File already has a quarantine record, including a lost creation race
   /api/v1/quarantine/{id}/scan:
     post:
       summary: Scan a quarantined file
+      description: >
+        Moves the record to SCANNING, calls Scanner and settles it as CLEAN,
+        INFECTED or FAILED. Returns 409 when the record has already settled, when a
+        scan of it is already in flight, or when every scanner capacity slot is held
+        by another scan; a refused scan leaves the record QUARANTINED and retryable.
       parameters:
         - $ref: '#/components/parameters/QuarantineId'
+        - $ref: '#/components/parameters/CorrelationId'
       responses:
         '200':
-          description: Scan completed
+          description: Scan settled; the state is Scanner's verdict or FAILED
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
           content:
             application/json:
               schema:
@@ -40,13 +64,15 @@ paths:
         '404':
           description: Quarantine record not found
         '409':
-          description: File has already been scanned
+          description: Already scanned, already being scanned, or scanner capacity exhausted
+        '405':
+          description: Method not allowed on this path
   /api/v1/quarantine/_evidence/summary:
     get:
-      summary: Summarize quarantine records by state
+      summary: Summarize quarantine records by state and report the scanner capacity
       responses:
         '200':
-          description: Quarantine record counts
+          description: Quarantine record counts and slot allocation
           content:
             application/json:
               schema:
@@ -56,6 +82,7 @@ paths:
       summary: Get a quarantine record
       parameters:
         - $ref: '#/components/parameters/QuarantineId'
+        - $ref: '#/components/parameters/CorrelationId'
       responses:
         '200':
           description: Quarantine record
@@ -88,6 +115,20 @@ components:
       schema:
         type: string
         format: uuid
+    CorrelationId:
+      in: header
+      name: X-Correlation-Id
+      required: false
+      schema:
+        type: string
+      description: >
+        Caller-supplied correlation ID, generated when absent and forwarded to
+        Scanner on the scan call.
+  headers:
+    CorrelationId:
+      description: Request correlation ID, returned on all responses.
+      schema:
+        type: string
   schemas:
     QuarantineRequest:
       type: object
@@ -111,7 +152,10 @@ components:
           format: uuid
         state:
           type: string
-          enum: [QUARANTINED, CLEAN, INFECTED, FAILED]
+          enum: [QUARANTINED, SCANNING, CLEAN, INFECTED, FAILED]
+          description: >
+            SCANNING is only observable while the Scanner call is in flight; the
+            other four are the states a record can be left in.
         scannerMode:
           type: string
         quarantinedAt:
@@ -123,7 +167,7 @@ components:
           nullable: true
     QuarantineEvidence:
       type: object
-      required: [total, byState]
+      required: [total, byState, scannerSlots, capacity]
       properties:
         total:
           type: integer
@@ -133,3 +177,16 @@ components:
           additionalProperties:
             type: integer
             format: int64
+        scannerSlots:
+          type: object
+          description: Rows of the capacity table by status, the contended resource.
+          properties:
+            FREE:
+              type: integer
+              format: int64
+            HELD:
+              type: integer
+              format: int64
+        capacity:
+          type: integer
+          description: MAX_CONCURRENT_SCANS, the number of scans allowed at once.

@@ -41,6 +41,13 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.2</version>
+                    <configuration>
+                        <!-- Byte Buddy ships with Spring Boot 3.3.5 officially supports class files up to
+                             Java 22. Mockito's inline mock maker therefore needs experimental mode to mock
+                             concrete service classes on newer JDKs, so the same build is green on Java 21,
+                             22, 24 and 25. EnableDynamicAgentLoading silences the JDK 21+ agent warning. -->
+                        <argLine>-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading</argLine>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
