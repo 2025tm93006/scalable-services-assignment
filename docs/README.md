@@ -4,6 +4,7 @@
 |---|---|
 | [architecture.md](architecture.md) | Mermaid views drawn from this code: component/deployment, happy-path and failure sequences, the Quarantine state machine and one ER diagram per service |
 | [business-rules.md](business-rules.md) | BR1 to BR4 as testable invariants, each mapped to the class that enforces it and the unit, HTTP, script and restart evidence that proves it |
+| [demo-runbook.md](demo-runbook.md) | Presenter's script: five terminals, the copy-pasteable curl sequence for the happy path, the three challenge scripts with the output lines to point at, and the on-camera troubleshooting table |
 | `openapi/` | The four API contracts: `intake.yaml`, `quarantine.yaml`, `scanner.yaml`, `release.yaml` |
 
 The report itself, the video links, the team contribution table, the individual

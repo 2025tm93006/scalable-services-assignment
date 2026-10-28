@@ -50,7 +50,10 @@ a scan needs it. Quarantine itself starts fine without it and then settles any s
 
 With all services running, run `bash scripts/health.sh` and then
 `bash scripts/e2e.sh`, which drives one transaction through all four services and
-asserts the failure paths. Ctrl-C stops each service.
+asserts the failure paths. To demonstrate the system to someone, including for the
+assignment video, follow
+[docs/demo-runbook.md](docs/demo-runbook.md): terminals, exact commands, the output
+lines worth pointing at, and the failure demos. Ctrl-C stops each service.
 All four services store their H2 databases in `data/intake.mv.db`,
 `data/quarantine.mv.db`, `data/scanner.mv.db` and `data/release.mv.db` and preserve
 records across restarts. Start each service from
