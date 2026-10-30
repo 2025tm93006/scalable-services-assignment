@@ -125,7 +125,8 @@ class ReleaseHttpTest {
     void eightSimultaneousRequestsReleaseOnce() throws Exception {
         int count = 8;
         CyclicBarrier start = new CyclicBarrier(count);
-        try (var pool = Executors.newFixedThreadPool(count)) {
+        var pool = Executors.newFixedThreadPool(count);
+        try {
             List<Future<ResponseEntity<String>>> calls = new ArrayList<>();
             for (int i = 0; i < count; i++) {
                 calls.add(pool.submit(() -> {
@@ -137,8 +138,10 @@ class ReleaseHttpTest {
             for (var call : calls) results.add(call.get(20, TimeUnit.SECONDS));
             for (ResponseEntity<String> response : results) {
                 assertEquals(201, response.getStatusCode().value(), response.getBody());
-                assertEquals(results.getFirst().getBody(), response.getBody());
+                assertEquals(results.get(0).getBody(), response.getBody());
             }
+        } finally {
+            pool.shutdown();
         }
         assertEquals(1, repository.count());
     }

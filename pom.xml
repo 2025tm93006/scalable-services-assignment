@@ -17,9 +17,9 @@
     </modules>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>17</java.version>
         <spring-boot.version>3.3.5</spring-boot.version>
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
     <dependencyManagement>
@@ -46,7 +46,7 @@
                              Java 22. Mockito's inline mock maker therefore needs experimental mode to mock
                              concrete service classes on newer JDKs, so the same build is green on Java 21,
                              22, 24 and 25. EnableDynamicAgentLoading silences the JDK 21+ agent warning. -->
-                        <argLine>-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading</argLine>
+                        <argLine>-Dnet.bytebuddy.experimental=true</argLine>
                     </configuration>
                 </plugin>
                 <plugin>

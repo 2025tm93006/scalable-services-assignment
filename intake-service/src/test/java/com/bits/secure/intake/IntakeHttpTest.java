@@ -91,7 +91,7 @@ class IntakeHttpTest {
         List<ResponseEntity<String>> results = parallelRequests(false);
         for (ResponseEntity<String> response : results) {
             assertEquals(201, response.getStatusCode().value());
-            assertEquals(results.getFirst().getBody(), response.getBody());
+            assertEquals(results.get(0).getBody(), response.getBody());
         }
         assertEquals(1, repository.countByIdempotencyKey("parallel-key"));
     }
@@ -163,7 +163,8 @@ class IntakeHttpTest {
     private List<ResponseEntity<String>> parallelRequests(boolean differentPayloads) throws Exception {
         int count = differentPayloads ? 2 : 8;
         CyclicBarrier start = new CyclicBarrier(count);
-        try (var pool = Executors.newFixedThreadPool(count)) {
+        var pool = Executors.newFixedThreadPool(count);
+        try {
             List<Future<ResponseEntity<String>>> calls = new ArrayList<>();
             for (int i = 0; i < count; i++) {
                 String body = differentPayloads && i == 1 ? payload().replace("demo.txt", "other.txt") : payload();
@@ -175,6 +176,8 @@ class IntakeHttpTest {
             List<ResponseEntity<String>> responses = new ArrayList<>();
             for (var call : calls) responses.add(call.get(20, TimeUnit.SECONDS));
             return responses;
+        } finally {
+            pool.shutdown();
         }
     }
 
