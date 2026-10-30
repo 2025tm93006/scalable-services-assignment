@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Scripted end-to-end test of the main transaction: Intake -> Quarantine -> Scanner -> Release.
 # Scanner is reached through Quarantine, which is the only service that calls another
-# service; the script then reads the attempt back from Scanner to prove the call happened.
+# service for a verdict; Release asks Quarantine for that verdict instead of being told it.
+# The script then reads the attempt back from Scanner to prove the call happened.
 # It proves BR1 (replay), BR2 (key reuse), BR3 (quarantine state machine), BR4 (clean-only
-# release) and exercises the failure paths, not just the happy path.
-# Start all four services first (see README) and run this from the repository root.
+# release, verified at the owner) and exercises the failure paths, not just the happy path.
+# Start all four services first - Scanner before Quarantine because Quarantine calls it,
+# and Quarantine before Release because Release verifies a state against it. Run from the
+# repository root. See scripts/e2e.sh header for what each block proves.
 set -uo pipefail
 
 INTAKE=${INTAKE_URL:-http://localhost:8081}
@@ -80,6 +83,12 @@ expect 200 "the scan Quarantine triggered is stored in Scanner's own database"
 [ "$(field finishedAt)" = "$QUARANTINE_SCANNED_AT" ] \
   || fail "Quarantine kept its own timestamp instead of Scanner's: $QUARANTINE_SCANNED_AT vs $(field finishedAt)"
 echo "ok  cross-service scan: Quarantine state and Scanner's finishedAt agree"
+# The address another service uses to ask about a file. Release verifies against exactly
+# this endpoint, so the transaction is shown to be checkable, not just assertable.
+request GET "$QUARANTINE/api/v1/quarantine/by-file/$FILE_ID" ''
+expect 200 "Quarantine answers for the file by its Intake id"
+[ "$(field state)" = "CLEAN" ] || fail "by-file read reported $(field state) instead of CLEAN"
+echo "ok  the record Release will verify says CLEAN"
 request POST "$QUARANTINE/api/v1/quarantine/$QUARANTINE_ID/scan" ''
 expect 409 "BR3 a scanned record cannot be scanned again"
 
@@ -118,6 +127,12 @@ DIRTY_QUARANTINED_AT=$(field quarantinedAt)
 request POST "$RELEASE/api/v1/releases" \
   "{\"fileId\":\"$DIRTY_FILE_ID\",\"quarantineState\":\"INFECTED\",\"quarantinedAt\":\"$DIRTY_QUARANTINED_AT\"}"
 expect 409 "BR4 the genuinely infected file is refused its release"
+# The headline of BR4: the caller's word is not the authority. The same file, the same
+# timestamp, and a lie about the state still gets refused, because Release asks Quarantine.
+request POST "$RELEASE/api/v1/releases" \
+  "{\"fileId\":\"$DIRTY_FILE_ID\",\"quarantineState\":\"CLEAN\",\"quarantinedAt\":\"$DIRTY_QUARANTINED_AT\"}"
+expect 409 "BR4 a client cannot release an infected file by claiming it is CLEAN"
+echo "ok  BR4 refused the false claim with: $(field message)"
 request GET "$RELEASE/api/v1/releases/$DIRTY_FILE_ID" ''
 expect 404 "BR4 nothing was stored for the refused file"
 

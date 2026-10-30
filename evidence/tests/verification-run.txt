@@ -1,0 +1,54 @@
+ENVIRONMENT openjdk 25.0.5.0.3 LTS | Apache Maven 3.9.16 | three packaged JARs on ephemeral ports, temporary file-based H2 per service
+COMMAND python3 scripts/verification.py
+TIMESTAMP 2026-10-30T04:28:50.567355+00:00
+CORRELATION_ID verification-82410481-11e7-4905-bd07-15b5c22ad118
+CONFIG releaseVerificationMaxAttempts=3 quarantineReadTimeoutMillis=1000 quarantineRetryBaseMillis=100
+
+PART_A_VERIFIED_RELEASE clean_file_releases_against_the_owners_record
+  QUARANTINE state=CLEAN
+  RESPONSE status=201 body={"fileId": "3d275389-6b6b-4e48-813f-bbe3f612363e", "quarantinedAt": "2026-10-30T04:28:56.760948Z", "releasedAt": "2026-10-30T04:28:57.029Z", "state": "RELEASED"}
+  PASS a file Quarantine reports CLEAN is released
+  PASS the release is readable
+  PASS Release logged the verification it performed: c.bits.secure.release.ReleaseService - release_verified fileId=3d275389-6b6b-4e48-813f-bbe3f612363e quarantineState=CLEAN quarantineRecordId=bd53a7d5-0572-4029-a4bb-07532a8c3522
+
+PART_B_LIZING_CLIENT claiming_CLEAN_for_an_infected_file_is_refused
+  QUARANTINE state=INFECTED
+  RESPONSE status=409 message=Quarantine reports this file as INFECTED, not CLEAN
+  PASS the release is refused even though the caller said CLEAN
+  PASS and the refusal names what Quarantine actually reported: Quarantine reports this file as INFECTED, not CLEAN
+  PASS and nothing was stored for the refused file
+  PASS a file that was never quarantined is refused too: No quarantine record for this file
+  PASS this one is clean as well, so only the timestamp can be the problem
+  PASS a real clean file claimed with the wrong quarantine time is refused: quarantinedAt does not match the quarantine record
+
+PART_C_QUARANTINE_DOWN no_check_no_release
+  PASS this file really is clean and releasable
+  PASS Quarantine is no longer listening on port 50121
+  RESPONSE status=503 message=Quarantine did not answer after 3 attempts elapsedMillis=395
+  PASS the release is refused with 503, not granted on the claim
+  PASS and the answer says why: Quarantine did not answer after 3 attempts
+  PASS nothing was stored while the dependency was down
+  PASS the whole budget of 3 attempts was spent on a read that is safe to repeat: 3 lines
+  RELEASE_LOG c.b.secure.release.QuarantineClient - quarantine_read fileId=cf408276-abe5-4c0a-8f04-59be804d311d attempt=1 maxAttempts=3
+  RELEASE_LOG c.b.secure.release.QuarantineClient - quarantine_read fileId=cf408276-abe5-4c0a-8f04-59be804d311d attempt=2 maxAttempts=3
+  RELEASE_LOG c.b.secure.release.QuarantineClient - quarantine_read fileId=cf408276-abe5-4c0a-8f04-59be804d311d attempt=3 maxAttempts=3
+  PASS the outage is logged as a dependency failure, not as a bug: c.b.s.common.GlobalExceptionHandler - dependency_unavailable path=/api/v1/releases message=Quarantine did not answer after 3 attempts
+  PASS an unchecked release is never reported as a policy rejection
+
+PART_D_DEPENDENCY_BACK release_proceeds
+  PASS Release stayed up throughout
+  RESPONSE status=201 body={"fileId": "cf408276-abe5-4c0a-8f04-59be804d311d", "quarantinedAt": "2026-10-30T04:28:57.129002Z", "releasedAt": "2026-10-30T04:29:00.457Z", "state": "RELEASED"}
+  PASS the same request succeeds once Quarantine answers again
+  PASS and a finished release still replays while Quarantine is down: 201
+  PASS the replay asked Quarantine nothing new
+
+RELEASE_LOG the verification, the refusals and the outage
+  c.bits.secure.release.ReleaseService - release_verified fileId=3d275389-6b6b-4e48-813f-bbe3f612363e quarantineState=CLEAN quarantineRecordId=bd53a7d5-0572-4029-a4bb-07532a8c3522
+  c.bits.secure.release.ReleaseService - release_rejected fileId=bb85b00d-4bdb-4092-81db-7a29f305bf3b claimed=CLEAN verified=INFECTED
+  c.bits.secure.release.ReleaseService - release_rejected fileId=f4038143-40d9-49e9-a611-9f79892ace64 reason=no_quarantine_record
+  c.bits.secure.release.ReleaseService - release_rejected fileId=560cd8ac-4d5b-4b9d-a469-10e64a8fdbe1 claimedQuarantinedAt=2020-01-01T00:00:00Z verifiedQuarantinedAt=2026-10-30T04:28:57.107510Z
+  c.b.s.common.GlobalExceptionHandler - dependency_unavailable path=/api/v1/releases message=Quarantine did not answer after 3 attempts
+  c.bits.secure.release.ReleaseService - release_verified fileId=cf408276-abe5-4c0a-8f04-59be804d311d quarantineState=CLEAN quarantineRecordId=5b5f6fe3-0599-4a72-8b4f-3215b4552a13
+  c.bits.secure.release.ReleaseService - release_replay fileId=cf408276-abe5-4c0a-8f04-59be804d311d
+
+VERIFICATION_PASS Release answers to Quarantine, not to the caller: a claimed CLEAN that Quarantine denies is refused, and a state that cannot be checked is not released

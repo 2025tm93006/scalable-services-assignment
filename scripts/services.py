@@ -18,6 +18,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 QUARANTINE_JAR = ROOT / 'quarantine-service/target/quarantine-service-1.0.0-SNAPSHOT.jar'
 SCANNER_JAR = ROOT / 'scanner-service/target/scanner-service-1.0.0-SNAPSHOT.jar'
+RELEASE_JAR = ROOT / 'release-service/target/release-service-1.0.0-SNAPSHOT.jar'
 
 
 def java_executable():
