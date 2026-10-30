@@ -73,7 +73,7 @@ public class QuarantineService {
             throw new ConflictException("Scanner capacity exhausted");
         }
 
-        record.startScan();
+        record.startScan(Instant.now());
         writer.save(record);
         log.info("scan_started fileId={} recordId={} slot={} mode={}",
                 record.getFileId(), record.getId(), slot, record.getScannerMode());

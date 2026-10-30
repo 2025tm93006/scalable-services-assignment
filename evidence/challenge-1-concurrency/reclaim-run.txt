@@ -1,0 +1,35 @@
+COMMAND python3 scripts/reclaim.py
+TIMESTAMP 2026-10-30T04:08:00.500259+00:00
+CORRELATION_ID reclaim-d64b02fe-5aa3-4643-bfb0-2a3529b19124
+CONFIG capacity=1 scannerSlowMillis=8000 readTimeoutMillis=30000 maxAttempts=1 slotStaleMillis=1500 sweepIntervalMillis=400
+DURING_THE_SCAN {"byState": {"CLEAN": 0, "FAILED": 0, "INFECTED": 0, "QUARANTINED": 0, "SCANNING": 1}, "capacity": 1, "scannerSlots": {"FREE": 0, "HELD": 1}, "total": 1}
+KILLING_QUARANTINE_MID_SCAN heldSlots=1 scanningRecords=1
+AFTER_RESTART_SWEEP_DISABLED {"byState": {"CLEAN": 0, "FAILED": 0, "INFECTED": 0, "QUARANTINED": 0, "SCANNING": 1}, "capacity": 1, "scannerSlots": {"FREE": 0, "HELD": 1}, "total": 1}
+
+LEAK_CONFIRMED_IN_THE_DATABASE
+  PASS the killed scan still holds a capacity slot
+  PASS the killed scan still leaves the record unsettled
+  PASS the record is stuck in SCANNING: SCANNING
+AFTER_RECLAIM_SWEEP {"byState": {"CLEAN": 0, "FAILED": 1, "INFECTED": 0, "QUARANTINED": 0, "SCANNING": 0}, "capacity": 1, "scannerSlots": {"FREE": 1, "HELD": 0}, "total": 1}
+
+RECLAIM_CONSISTENCY
+  PASS the abandoned slot was returned to the table
+  PASS capacity is back to its declared size
+  PASS no record is left in SCANNING
+  PASS the abandoned scan was settled as FAILED
+  PASS the record reports FAILED without a second transition: FAILED
+  PASS the settlement is timestamped like any other
+  PASS the reclaimed record is still final: 409 File has already been scanned
+
+CAPACITY_USABLE_AFTER_THE_SWEEP
+  PASS a new scan runs on the reclaimed slot: status=200 49 ms
+
+RECLAIM_LOG
+  c.b.secure.quarantine.ScanReclaimJob - scan_reclaim_age_below_budget staleMillis=1500 retryBudgetMillis=30000 a scan that is still running could have its slot taken away
+  c.b.secure.quarantine.ScanReclaimJob - scan_reclaim_settled fileId=17b87e53-8560-4561-a38a-aceef465fdfa recordId=c3fb93e0-f2dc-48e7-81c5-cf13db5e4d7d from=SCANNING to=FAILED
+  c.b.secure.quarantine.ScanReclaimJob - scan_reclaim slotsFreed=1 recordsFailed=1 staleMillis=1500
+  PASS the sweep logged both the settle and the summary
+  PASS the job warns that this demo age is below the retry budget: c.b.secure.quarantine.ScanReclaimJob - scan_reclaim_age_below_budget staleMillis=1500 retryBudgetMillis=30000 a scan that is still running could have its slot taken away
+KILLED_REQUEST_ANSWER ["killed", "Remote end closed connection without response"]
+
+RECLAIM_PASS a killed scan left a HELD slot and a SCANNING record, and the sweep returned both without touching the database by hand

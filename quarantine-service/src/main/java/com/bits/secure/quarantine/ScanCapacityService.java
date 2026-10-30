@@ -61,6 +61,14 @@ public class ScanCapacityService {
         log.info("scanner_slot_released fileId={} slot={} rowsUpdated={}", fileId, slotNumber, updated);
     }
 
+    /**
+     * Frees slots left HELD by a scan whose process stopped. Returns the number of rows
+     * changed so the caller can report a sweep that did nothing without logging noise.
+     */
+    public int releaseStaleSlots(Instant cutoff) {
+        return slots.releaseStale(cutoff, Instant.now());
+    }
+
     public Optional<ScanSlot> slotHeldBy(UUID fileId) {
         return slots.findByFileId(fileId);
     }

@@ -91,6 +91,16 @@ def stop(process):
         process.wait()
 
 
+def kill_hard(process):
+    """SIGKILL: simulates a process that stopped without a chance to clean up. A graceful
+    terminate can let an in-flight request reach its finally block and release its own
+    capacity slot, which is exactly the behaviour the reclaim sweep must not be tested on."""
+    if process is None or process.poll() is not None:
+        return
+    process.kill()
+    process.wait(timeout=15)
+
+
 def is_listening(port):
     with socket.socket() as sock:
         sock.settimeout(0.5)

@@ -168,7 +168,7 @@ class QuarantineServiceTest {
     @Test
     void aScanAlreadyInFlightIsRefusedRatherThanStartedAgain() {
         QuarantineRecord record = quarantined();
-        record.startScan();
+        record.startScan(SCANNED_AT);
         when(repository.findById(record.getId())).thenReturn(Optional.of(record));
 
         ConflictException conflict = assertThrows(ConflictException.class, () -> service.scan(record.getId()));

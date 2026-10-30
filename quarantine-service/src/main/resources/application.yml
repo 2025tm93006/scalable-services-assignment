@@ -15,6 +15,12 @@ spring:
 quarantine:
   # Scanner capacity. A scan only runs while it owns one of these slots.
   max-concurrent-scans: ${MAX_CONCURRENT_SCANS:2}
+  # Reclaim sweep: a HELD slot and a SCANNING record older than this are treated as
+  # abandoned by a process that stopped. Keep it above read-timeout x max-attempts or
+  # the sweep can interrupt a scan that is still entitled to finish.
+  slot-stale-millis: ${QUARANTINE_SLOT_STALE_MILLIS:60000}
+  reclaim-interval-millis: ${QUARANTINE_RECLAIM_INTERVAL_MILLIS:10000}
+  reclaim-enabled: ${QUARANTINE_RECLAIM_ENABLED:true}
 scanner:
   base-url: ${SCANNER_BASE_URL:http://localhost:8083}
   connect-timeout-millis: ${SCANNER_CONNECT_TIMEOUT_MILLIS:300}
