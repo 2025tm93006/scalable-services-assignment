@@ -1,55 +1,83 @@
 COMMAND python3 scripts/resilience.py
-TIMESTAMP 2026-10-26T13:50:53.186387+00:00
+TIMESTAMP 2026-10-30T04:14:30.976205+00:00
 CONFIG scannerReadTimeoutMillis=500 maxAttempts=3 retryBaseMillis=200 retryJitterMillis=150 scannerSlowMillis=1500
 
 PART_A_SLOW_DOWNSTREAM timeout_then_retry_no_duplicate_effect
-  RESPONSE status=200 state=CLEAN elapsedMillis=1851
+  RESPONSE status=200 state=CLEAN elapsedMillis=1832
   PASS the retried attempt still produced Scanner's verdict
-  PASS caller waited past the 500 ms timeout because a retry completed the scan (1851 ms)
+  PASS caller waited past the 500 ms timeout because a retry completed the scan (1832 ms)
   PASS Scanner stored 1 attempt for this file, expected exactly 1
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=835d85d5-6722-49a4-919c-fde63c5e1f89 attempt=1 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans": request timed out (HttpTimeoutException: request timed out)
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_retry fileId=835d85d5-6722-49a4-919c-fde63c5e1f89 nextAttempt=2 delayMillis=320
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=835d85d5-6722-49a4-919c-fde63c5e1f89 attempt=2 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans": request timed out (HttpTimeoutException: request timed out)
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_retry fileId=835d85d5-6722-49a4-919c-fde63c5e1f89 nextAttempt=3 delayMillis=459
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=170fb3c0-4b05-41ad-9cdf-b429c9c30048 attempt=1 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans": Request timed out (TimeoutException)
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_retry fileId=170fb3c0-4b05-41ad-9cdf-b429c9c30048 nextAttempt=2 delayMillis=298
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=170fb3c0-4b05-41ad-9cdf-b429c9c30048 attempt=2 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans": request timed out (HttpTimeoutException: request timed out)
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_retry fileId=170fb3c0-4b05-41ad-9cdf-b429c9c30048 nextAttempt=3 delayMillis=456
   PASS the failed attempt was retried with a logged delay
-  PASS backoff delays [320, 459] are at least the 200 ms base
+  PASS backoff delays [298, 456] are at least the 200 ms base
   PASS a slow call is reported as a timeout, not as a response-parsing error
-  PASS every logged failure of Part A is a timeout: I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans": request timed out (HttpTimeoutException: request timed out)
+  PASS every logged failure of Part A is a timeout: I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans": Request timed out (TimeoutException), I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans": request timed out (HttpTimeoutException: request timed out)
 
 PART_B_STOPPED_DOWNSTREAM graceful_failure
-  PASS Scanner is no longer listening on port 57299
-  RESPONSE status=200 state=FAILED elapsedMillis=937
+  PASS Scanner is no longer listening on port 65188
+  RESPONSE status=200 state=FAILED elapsedMillis=731
   PASS Quarantine answered instead of failing the request
   PASS the file settled as FAILED
   PASS 3 attempts were logged, expected 3
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_call fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=1 maxAttempts=3 mode=CLEAN
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_call fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=2 maxAttempts=3 mode=CLEAN
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_call fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=3 maxAttempts=3 mode=CLEAN
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=1 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans" (ClosedChannelException)
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=2 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans" (ClosedChannelException)
-  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=3 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans" (ClosedChannelException)
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_call fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=1 maxAttempts=3 mode=CLEAN
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_call fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=2 maxAttempts=3 mode=CLEAN
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_call fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=3 maxAttempts=3 mode=CLEAN
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=1 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans" (ClosedChannelException)
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=2 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans" (ClosedChannelException)
+  QUARANTINE_LOG c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=3 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans" (ClosedChannelException)
   PASS every attempt failed at the connection, not on the clock
-  QUARANTINE_LOG c.b.s.quarantine.QuarantineService - scan_failed_downstream_unavailable fileId=690b2a80-98e6-4c9a-955a-893cad72de27 message=Scanner did not answer after 3 attempts
+  QUARANTINE_LOG c.b.s.quarantine.QuarantineService - scan_failed_downstream_unavailable fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb message=Scanner did not answer after 3 attempts
   EVIDENCE {"byState": {"CLEAN": 1, "FAILED": 1, "INFECTED": 0, "QUARANTINED": 0, "SCANNING": 0}, "capacity": 2, "scannerSlots": {"FREE": 2, "HELD": 0}, "total": 2}
   PASS the capacity slot was released even though the scan failed
 
 PART_C_DOWNSTREAM_RESTARTED service_kept_working
   PASS Quarantine stayed healthy throughout
-  RESPONSE status=200 state=CLEAN elapsedMillis=119
+  RESPONSE status=200 state=CLEAN elapsedMillis=124
   PASS a new file scans cleanly once Scanner is back
   PASS the record that failed during the outage stays settled: 409 File has already been scanned
 
 PART_D_DOWNSTREAM_IDEMPOTENCY retry_replays_the_stored_result
   PASS both calls returned the result
-  PASS same completedAt replayed: 2026-10-26T13:51:02.109Z == 2026-10-26T13:51:02.109Z
+  PASS same completedAt replayed: 2026-10-30T04:14:39.987Z == 2026-10-30T04:14:39.987Z
   PASS totalAttempts stayed at 3; the repeat stored nothing
-  SCANNER {"completedAt": "2026-10-26T13:51:02.109Z", "fileId": "ba2bc952-e323-4cf5-aced-ccb0fb374e29", "message": "Deterministic mock result", "result": "CLEAN"}
+  SCANNER {"completedAt": "2026-10-30T04:14:39.987Z", "fileId": "5c036be0-1d51-4033-a368-354ea9645530", "message": "Deterministic mock result", "result": "CLEAN"}
 
 QUARANTINE_CLIENT_LOG the configured budget and every attempt
-  c.b.secure.quarantine.ScannerClient - scanner_client_configured baseUrl=http://127.0.0.1:57299 connectTimeoutMillis=300 readTimeoutMillis=500 maxAttempts=3 retryBaseMillis=200 retryJitterMillis=150
-  c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=835d85d5-6722-49a4-919c-fde63c5e1f89 attempt=2 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans": request timed out (HttpTimeoutException: request timed out)
-  c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=1 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans" (ClosedChannelException)
-  c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=2 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans" (ClosedChannelException)
-  c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=690b2a80-98e6-4c9a-955a-893cad72de27 attempt=3 error=I/O error on POST request for "http://127.0.0.1:57299/api/v1/scans" (ClosedChannelException)
+  c.b.secure.quarantine.ScannerClient - scanner_client_configured baseUrl=http://127.0.0.1:65188 connectTimeoutMillis=300 readTimeoutMillis=500 maxAttempts=3 retryBaseMillis=200 retryJitterMillis=150 circuitBreakerEnabled=false circuitFailureThreshold=3 circuitOpenMillis=4000
+  c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=170fb3c0-4b05-41ad-9cdf-b429c9c30048 attempt=2 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans": request timed out (HttpTimeoutException: request timed out)
+  c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=1 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans" (ClosedChannelException)
+  c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=2 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans" (ClosedChannelException)
+  c.b.secure.quarantine.ScannerClient - scanner_attempt_failed fileId=9062f23c-a5f2-47a5-8ce2-296e676b27bb attempt=3 error=I/O error on POST request for "http://127.0.0.1:65188/api/v1/scans" (ClosedChannelException)
 
-CHALLENGE_3A_PASS timeout, retry with backoff and jitter, and graceful failure were all observed, and no retry produced a duplicate
+PART_E_CIRCUIT_BREAKER refuses_calls_while_the_dependency_is_down
+  PASS Scanner is stopped again on port 65188
+  PASS this Quarantine started with the breaker on: threshold 2, cooldown 2500 ms
+  BREAKER_LOG c.b.secure.quarantine.ScannerClient - scanner_client_configured baseUrl=http://127.0.0.1:65188 connectTimeoutMillis=300 readTimeoutMillis=500 maxAttempts=2 retryBaseMillis=200 retryJitterMillis=0 circuitBreakerEnabled=true circuitFailureThreshold=2 circuitOpenMillis=2500
+  PASS the instance that produced Parts A-D kept the breaker off, so that evidence is unchanged
+  SCAN step=0 status=200 state=FAILED elapsedMillis=249 httpAttemptsMade=2
+  PASS step 0 settled FAILED either way, so the caller still gets a state
+  PASS step 0 spent its whole budget of 2 attempts
+  SCAN step=1 status=200 state=FAILED elapsedMillis=227 httpAttemptsMade=2
+  PASS step 1 settled FAILED either way, so the caller still gets a state
+  PASS step 1 spent its whole budget of 2 attempts
+  SCAN step=2 status=200 state=FAILED elapsedMillis=8 httpAttemptsMade=0
+  PASS step 2 settled FAILED either way, so the caller still gets a state
+  PASS the call after the threshold made no HTTP attempt at all
+  PASS the refused call cost 8 ms against [249, 227] ms for the real attempts
+  BREAKER_LOG c.b.s.q.ScannerCircuitBreaker - scanner_circuit_tripped failedCalls=2 threshold=2 openMillis=2500
+  BREAKER_LOG c.b.secure.quarantine.ScannerClient - scanner_circuit_refused fileId=ada4161a-c771-4fa4-893a-7de105fe84ab state=OPEN attemptsMade=0
+  PASS the open circuit logged the refusal it made
+  EVIDENCE {"byState": {"CLEAN": 0, "FAILED": 3, "INFECTED": 0, "QUARANTINED": 0, "SCANNING": 0}, "capacity": 2, "scannerSlots": {"FREE": 2, "HELD": 0}, "total": 3}
+  PASS refused scans gave their capacity slots back
+  PROBE status=200 state=CLEAN elapsedMillis=149
+  PASS one probe after the cooldown reached Scanner and got a verdict
+  PASS the probe was one call, not the whole queue
+  PASS the circuit closed again after the successful probe
+  BREAKER_LIFECYCLE c.b.s.q.ScannerCircuitBreaker - scanner_circuit_tripped failedCalls=2 threshold=2 openMillis=2500
+  BREAKER_LIFECYCLE c.b.s.q.ScannerCircuitBreaker - scanner_circuit_probe_allowed openForMillis=4786
+  BREAKER_LIFECYCLE c.b.s.q.ScannerCircuitBreaker - scanner_circuit_closed afterFailedCalls=2
+
+CHALLENGE_3A_PASS timeout, retry with backoff and jitter, graceful failure and the circuit breaker bonus were all observed, and no retry produced a duplicate

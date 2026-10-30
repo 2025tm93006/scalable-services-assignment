@@ -4,6 +4,7 @@ import com.bits.secure.common.CorrelationIdFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -37,14 +38,34 @@ public class ScannerClient {
     private final int maxAttempts;
     private final long retryBaseMillis;
     private final long retryJitterMillis;
+    private final ScannerCircuitBreaker breaker;
 
+    // Marked explicitly because the test constructors below make this ambiguous: without
+    // it Spring looks for a default constructor and the whole context fails to start.
+    @Autowired
     public ScannerClient(
             @Value("${scanner.base-url:http://localhost:8083}") String baseUrl,
             @Value("${scanner.connect-timeout-millis:300}") int connectTimeoutMillis,
             @Value("${scanner.read-timeout-millis:5000}") int readTimeoutMillis,
             @Value("${scanner.max-attempts:3}") int maxAttempts,
             @Value("${scanner.retry-base-millis:100}") long retryBaseMillis,
-            @Value("${scanner.retry-jitter-millis:100}") long retryJitterMillis) {
+            @Value("${scanner.retry-jitter-millis:100}") long retryJitterMillis,
+            @Value("${scanner.circuit-breaker.enabled:false}") boolean breakerEnabled,
+            @Value("${scanner.circuit-breaker.failure-threshold:3}") int breakerThreshold,
+            @Value("${scanner.circuit-breaker.open-millis:4000}") long breakerOpenMillis) {
+        this(baseUrl, connectTimeoutMillis, readTimeoutMillis, maxAttempts, retryBaseMillis,
+                retryJitterMillis, new ScannerCircuitBreaker(breakerEnabled, breakerThreshold, breakerOpenMillis));
+    }
+
+    /** Used by the tests that build a client directly; the breaker is off unless given. */
+    ScannerClient(String baseUrl, int connectTimeoutMillis, int readTimeoutMillis, int maxAttempts,
+                  long retryBaseMillis, long retryJitterMillis) {
+        this(baseUrl, connectTimeoutMillis, readTimeoutMillis, maxAttempts, retryBaseMillis,
+                retryJitterMillis, new ScannerCircuitBreaker(false, 1, 0));
+    }
+
+    ScannerClient(String baseUrl, int connectTimeoutMillis, int readTimeoutMillis, int maxAttempts,
+                  long retryBaseMillis, long retryJitterMillis, ScannerCircuitBreaker breaker) {
         if (maxAttempts < 1) throw new IllegalArgumentException("SCANNER_MAX_ATTEMPTS must be at least 1");
         if (retryBaseMillis < 0) throw new IllegalArgumentException("SCANNER_RETRY_BASE_MILLIS must not be negative");
         if (retryJitterMillis < 0) throw new IllegalArgumentException("SCANNER_RETRY_JITTER_MILLIS must not be negative");
@@ -58,18 +79,41 @@ public class ScannerClient {
         this.maxAttempts = maxAttempts;
         this.retryBaseMillis = retryBaseMillis;
         this.retryJitterMillis = retryJitterMillis;
+        this.breaker = breaker;
         log.info("scanner_client_configured baseUrl={} connectTimeoutMillis={} readTimeoutMillis={} "
-                        + "maxAttempts={} retryBaseMillis={} retryJitterMillis={}",
-                baseUrl, connectTimeoutMillis, readTimeoutMillis, maxAttempts, retryBaseMillis, retryJitterMillis);
+                        + "maxAttempts={} retryBaseMillis={} retryJitterMillis={} "
+                        + "circuitBreakerEnabled={} circuitFailureThreshold={} circuitOpenMillis={}",
+                baseUrl, connectTimeoutMillis, readTimeoutMillis, maxAttempts, retryBaseMillis,
+                retryJitterMillis, breaker.enabled(), breaker.failureThreshold(), breaker.openMillis());
     }
 
     /**
      * Posts the scan request and returns Scanner's verdict. Any failed attempt is
      * retried, including Scanner's own 409 for a scan that is still in flight.
      *
-     * @throws ScannerUnavailableException when all attempts failed
+     * The breaker is accounted per call, never per attempt: a scan that recovers on its
+     * second attempt was a successful call and must not move the circuit.
+     * @throws ScannerUnavailableException when the circuit is open or all attempts failed
      */
     public ScanResult scan(UUID fileId, String scannerMode) {
+        if (!breaker.allowCall()) {
+            // Refused before any HTTP request, so the caller still gets a settled verdict
+            // instead of paying the retry budget for a dependency known to be down.
+            log.warn("scanner_circuit_refused fileId={} state={} attemptsMade=0", fileId, breaker.state());
+            throw new ScannerUnavailableException(
+                    "Scanner circuit is open, the call was refused without an attempt", null);
+        }
+        try {
+            ScanResult result = attemptWithinBudget(fileId, scannerMode);
+            breaker.recordSuccess();
+            return result;
+        } catch (ScannerUnavailableException outage) {
+            breaker.recordFailure();
+            throw outage;
+        }
+    }
+
+    private ScanResult attemptWithinBudget(UUID fileId, String scannerMode) {
         RestClientException lastFailure = null;
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
