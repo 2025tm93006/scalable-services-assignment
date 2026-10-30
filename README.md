@@ -82,6 +82,51 @@ see its `.env.example`. Quarantine additionally reads `MAX_CONCURRENT_SCANS`, th
 `QUARANTINE_*` verification budget. These files are examples and are not
 loaded automatically.
 
+## Run with Docker
+
+Each service has its own multi-stage `Dockerfile`, built from the repository root
+because the module needs the parent POM and `common/`:
+
+```bash
+docker build -f intake-service/Dockerfile -t intake-service:1.0.0 .
+```
+
+Each image runs as a non-root user on a JRE 17 Alpine base, keeps its H2 database
+under the `/app/data` volume and reports health to Docker through `GET /health`.
+
+`docker-compose.yml` deploys all four as the Compose project `scalable-assignment`
+(Compose requires lowercase project names) on one bridge network:
+
+| Container | Host port | Depends on | Volume |
+|---|---|---|---|
+| `intake-service` | 8081 | - | `scalable-assignment_intake-data` |
+| `scanner-service` | 8083 | - | `scalable-assignment_scanner-data` |
+| `quarantine-service` | 8082 | Scanner healthy | `scalable-assignment_quarantine-data` |
+| `release-service` | 8084 | Quarantine healthy | `scalable-assignment_release-data` |
+
+Quarantine reaches Scanner at `http://scanner-service:8083` and Release reaches
+Quarantine at `http://quarantine-service:8082`; `localhost` inside a container is that
+container itself. Stop any services started with `java -jar` first, since they hold the
+same host ports.
+
+```bash
+docker compose up -d --build --wait
+docker compose ps
+bash scripts/health.sh && bash scripts/e2e.sh
+docker compose down          # add -v to also delete the database volumes
+```
+
+`bash scripts/flow.sh` sends one file through all four services under one correlation
+ID - Intake, Quarantine, the scan Quarantine asks Scanner for, and the release Release
+verifies at Quarantine - and then prints that ID's log lines from each container, which
+shows the containers calling each other by service name.
+`bash scripts/flow.sh INFECTED` shows the same flow ending in a 409 refused release. To
+trace any request by hand, run `docker logs quarantine-service 2>&1 | grep <correlationId>`.
+
+Host ports default to 8081-8084. If those are in use, set `INTAKE_PORT`,
+`QUARANTINE_PORT`, `SCANNER_PORT` and `RELEASE_PORT`, and point the scripts at them
+with `INTAKE_URL`, `QUARANTINE_URL`, `SCANNER_URL` and `RELEASE_URL`.
+
 ## Layout
 
 `common/` holds HTTP health and correlation utilities. The four `*-service/`

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -41,7 +42,8 @@ public class QuarantineService {
         if (repository.existsByFileId(request.fileId())) {
             throw new ConflictException("File is already quarantined");
         }
-        Instant now = Instant.now();
+        // Millisecond precision, so the create response matches every later read on any OS clock.
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         QuarantineRecord record = new QuarantineRecord(
                 UUID.randomUUID(), request.fileId(), request.scannerMode(), now);
         try {

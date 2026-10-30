@@ -1,0 +1,92 @@
+# Secure File Quarantine and Release System - full deployment.
+#   docker compose up -d --build
+#   bash scripts/health.sh && bash scripts/e2e.sh
+#
+# Call edges: Quarantine -> Scanner, Release -> Quarantine. Intake is independent.
+# Inside the network each service is reached by its service name, never localhost.
+# Host ports default to 8081-8084; override with INTAKE_PORT etc. if those are taken.
+
+# Compose project names must be lowercase, so "Scalable-Assignment" is written as:
+name: scalable-assignment
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks: [backend]
+  environment: &common-env
+    JAVA_OPTS: "-XX:MaxRAMPercentage=75"
+
+services:
+  intake-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: intake-service/Dockerfile
+    image: intake-service:1.0.0
+    container_name: intake-service
+    ports:
+      - "${INTAKE_PORT:-8081}:8081"
+    volumes:
+      - intake-data:/app/data
+
+  scanner-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: scanner-service/Dockerfile
+    image: scanner-service:1.0.0
+    container_name: scanner-service
+    ports:
+      - "${SCANNER_PORT:-8083}:8083"
+    environment:
+      <<: *common-env
+      SCANNER_SLOW_MILLIS: ${SCANNER_SLOW_MILLIS:-2000}
+    volumes:
+      - scanner-data:/app/data
+
+  quarantine-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: quarantine-service/Dockerfile
+    image: quarantine-service:1.0.0
+    container_name: quarantine-service
+    ports:
+      - "${QUARANTINE_PORT:-8082}:8082"
+    environment:
+      <<: *common-env
+      SCANNER_BASE_URL: http://scanner-service:8083
+      MAX_CONCURRENT_SCANS: ${MAX_CONCURRENT_SCANS:-2}
+      SCANNER_CB_ENABLED: ${SCANNER_CB_ENABLED:-false}
+    volumes:
+      - quarantine-data:/app/data
+    depends_on:
+      scanner-service:
+        condition: service_healthy
+
+  release-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: release-service/Dockerfile
+    image: release-service:1.0.0
+    container_name: release-service
+    ports:
+      - "${RELEASE_PORT:-8084}:8084"
+    environment:
+      <<: *common-env
+      QUARANTINE_BASE_URL: http://quarantine-service:8082
+    volumes:
+      - release-data:/app/data
+    depends_on:
+      quarantine-service:
+        condition: service_healthy
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  intake-data:
+  quarantine-data:
+  scanner-data:
+  release-data:

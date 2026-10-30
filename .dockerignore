@@ -1,0 +1,10 @@
+**/target/
+data/
+evidence/
+docs/
+scripts/
+.git/
+.idea/
+.vscode/
+**/*.log
+**/.env
