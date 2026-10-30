@@ -269,7 +269,7 @@ sequenceDiagram
         Q->>Q: state=FAILED, settled once
         Q->>SC: release(slot 1) in finally
         Q-->>C: 200 state=FAILED in milliseconds instead of the full budget
-        Note over CL: after the cooldown one probe is let through; success closes it
+        Note over CL: after cooldown one probe is let through — success closes it
     end
 
     rect rgb(55, 25, 55)
