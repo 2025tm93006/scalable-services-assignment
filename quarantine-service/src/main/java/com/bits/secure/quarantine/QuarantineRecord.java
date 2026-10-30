@@ -29,6 +29,10 @@ public class QuarantineRecord {
     @Column(nullable = false)
     private Instant quarantinedAt;
 
+    // When this record entered SCANNING. Not part of the response: it exists so the
+    // reclaim job can tell an abandoned scan from one that is still inside its budget.
+    private Instant scanStartedAt;
+
     private Instant scannedAt;
 
     protected QuarantineRecord() {
@@ -42,8 +46,9 @@ public class QuarantineRecord {
         this.state = QuarantineState.QUARANTINED;
     }
 
-    void startScan() {
+    void startScan(Instant startedAt) {
         this.state = QuarantineState.SCANNING;
+        this.scanStartedAt = startedAt;
     }
 
     void completeScan(QuarantineState result, Instant timestamp) {
@@ -69,6 +74,10 @@ public class QuarantineRecord {
 
     Instant getQuarantinedAt() {
         return quarantinedAt;
+    }
+
+    Instant getScanStartedAt() {
+        return scanStartedAt;
     }
 
     Instant getScannedAt() {

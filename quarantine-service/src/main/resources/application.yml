@@ -15,6 +15,12 @@ spring:
 quarantine:
   # Scanner capacity. A scan only runs while it owns one of these slots.
   max-concurrent-scans: ${MAX_CONCURRENT_SCANS:2}
+  # Reclaim sweep: a HELD slot and a SCANNING record older than this are treated as
+  # abandoned by a process that stopped. Keep it above read-timeout x max-attempts or
+  # the sweep can interrupt a scan that is still entitled to finish.
+  slot-stale-millis: ${QUARANTINE_SLOT_STALE_MILLIS:60000}
+  reclaim-interval-millis: ${QUARANTINE_RECLAIM_INTERVAL_MILLIS:10000}
+  reclaim-enabled: ${QUARANTINE_RECLAIM_ENABLED:true}
 scanner:
   base-url: ${SCANNER_BASE_URL:http://localhost:8083}
   connect-timeout-millis: ${SCANNER_CONNECT_TIMEOUT_MILLIS:300}
@@ -24,6 +30,12 @@ scanner:
   # Delay is retry-base * 2^(attempt-1) plus a random 0..retry-jitter milliseconds.
   retry-base-millis: ${SCANNER_RETRY_BASE_MILLIS:100}
   retry-jitter-millis: ${SCANNER_RETRY_JITTER_MILLIS:100}
+  # Challenge 3A bonus. Off by default so every scan really does attempt its calls and the
+  # retry evidence stays readable; switch it on to stop calling a Scanner that is down.
+  circuit-breaker:
+    enabled: ${SCANNER_CB_ENABLED:false}
+    failure-threshold: ${SCANNER_CB_FAILURE_THRESHOLD:3}
+    open-millis: ${SCANNER_CB_OPEN_MILLIS:4000}
 logging:
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %logger{36} - %msg%n"

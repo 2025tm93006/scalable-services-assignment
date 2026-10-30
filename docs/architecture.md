@@ -8,8 +8,9 @@ renders on GitHub, in the IDE preview and in the report PDF export.
 ## Component and deployment view
 
 Four independent Spring Boot entry points, one HTTP port and one file-based H2
-database each. `common` is a compile-time library, not a running service. The only
-edge from one service to another is Quarantine's `ScannerClient`.
+database each. `common` is a compile-time library, not a running service. Two edges go
+between services: Quarantine asks Scanner for a verdict, and Release asks Quarantine to
+confirm one. Neither of them reads another service's database.
 
 ```mermaid
 flowchart LR
@@ -39,14 +40,18 @@ flowchart LR
 
     subgraph r["release-service :8084"]
         Release[ReleaseController<br/>ReleaseService<br/>ReleaseRecordWriter]
+        Verifier[QuarantineClient<br/>verification read]
         RDB[("H2 file<br/>data/release.mv.db<br/>release_record")]
     end
 
     Client -->|POST /api/v1/files<br/>Idempotency-Key| Intake
     Client -->|POST /api/v1/quarantine| Quarantine
-    Client -->|POST /api/v1/releases| Release
+    Client -->|POST /api/v1/releases| Verifier
     Client -.->|GET /api/v1/scans/fileId<br/>read-back proof only| Scanner
 
+    Verifier -->|GET /api/v1/quarantine/by-file/fileId<br/>read-only verification| Quarantine
+    Release --> Verifier
+    Release -->|save / replay| RDB
     Quarantine --> Capacity
     Capacity -->|claim / release<br/>conditional UPDATE| QDB
     Quarantine -->|save / settle| QDB
@@ -66,17 +71,27 @@ Reading the edges:
 * The `Quarantine -> Scanner` edge is the assignment's service-to-service REST call.
   It is the caller of Challenge 3A: `scanner.connect-timeout-millis`,
   `scanner.read-timeout-millis`, `scanner.max-attempts`,
-  `scanner.retry-base-millis`, `scanner.retry-jitter-millis`.
+  `scanner.retry-base-millis`, `scanner.retry-jitter-millis`, plus the optional
+  circuit breaker (`scanner.circuit-breaker.*`, off by default).
+* The `Release -> Quarantine` edge is a read-only verification with its own
+  `quarantine.*` budget: Release will not grant a release on a state it can only be
+  told about. It stores nothing new from that read beyond the decision it makes, so
+  data ownership is unchanged.
 * The `Client -.-> Scanner` dashed edge is not part of the transaction. `scripts/e2e.sh`
   reads `GET /api/v1/scans/{fileId}` afterwards to prove the call really reached
   Scanner's own database.
-* Release is called directly by the client with the quarantine evidence
-  (`fileId`, `quarantineState`, `quarantinedAt`) in the body. No service opens another
-  service's database, so there is no shared-schema edge anywhere in this diagram.
+* Release is still called by the client, and the client still submits the quarantine
+  evidence. What changed is that the submission is now a claim that gets checked against
+  the owning service rather than the whole basis of the decision. No service opens
+  another service's database, so there is no shared-schema edge anywhere in this diagram.
+* Both chains are two hops deep - client to Quarantine to Scanner, client to Release to
+  Quarantine - which stays inside the design rule about not drawing a request through a
+  long synchronous chain.
 * `data/quarantine.mv.db` holds two tables because Quarantine owns two contended
   resources: the record (unique `fileId`) and the scanner capacity slot table.
 
-Proven by `scripts/e2e.sh` (28 checks) and `bash scripts/health.sh`.
+Proven by `scripts/e2e.sh` (32 asserted steps), `scripts/verification.py` and
+`bash scripts/health.sh`.
 
 ## Happy-path sequence
 
@@ -117,17 +132,66 @@ sequenceDiagram
     Q-->>C: 200 state=CLEAN
 
     C->>R: POST /api/v1/releases {fileId, CLEAN, quarantinedAt}
-    R->>R: requireReleasable then save
+    R->>Q: GET /api/v1/quarantine/by-file/fileId
+    Q-->>R: 200 state=CLEAN, quarantinedAt
+    R->>R: claim matches the owner's record, then save
     R-->>C: 201 state=RELEASED
 ```
 
 Proven by `QuarantineHttpTest`, `scripts/e2e.sh` (which asserts Quarantine's `scannedAt`
-equals Scanner's stored `finishedAt`) and
+equals Scanner's stored `finishedAt`, and reads the same record Release verifies) and
 `evidence/tests/e2e-run.txt`.
+
+## Verification of a release
+
+Release's own decision path, including the two ways it must not be granted. A replay of a
+finished release never calls out, so a Quarantine outage cannot unmake a file that is
+already out.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant R as ReleaseService
+    participant QC as QuarantineClient
+    participant Q as QuarantineService
+
+    C->>R: POST /api/v1/releases {fileId, CLEAN, quarantinedAt}
+    R->>R: already released? replay release_record, no call out
+    R->>R: claim says CLEAN and a timestamp is present
+    R->>QC: verify(fileId)
+    QC->>Q: GET /api/v1/quarantine/by-file/fileId (X-Correlation-Id forwarded)
+    Q-->>QC: 200 state=CLEAN, quarantinedAt
+    QC-->>R: the authoritative record
+    R->>R: state is CLEAN and quarantinedAt matches to the millisecond
+    R->>R: insert release_record, the primary key decides a race
+    R-->>C: 201 RELEASED
+
+    Note over C,Q: A client claims CLEAN for a file Quarantine reports as INFECTED
+    C->>R: POST /api/v1/releases {fileId, CLEAN, quarantinedAt}
+    R->>QC: verify(fileId)
+    QC->>Q: GET /api/v1/quarantine/by-file/fileId
+    Q-->>QC: 200 state=INFECTED
+    R-->>C: 409 Quarantine reports this file as INFECTED, not CLEAN
+    Note over R: nothing stored, so the later GET is 404
+
+    Note over C,Q: Quarantine is unreachable
+    C->>R: POST /api/v1/releases {fileId, CLEAN, quarantinedAt}
+    loop attempts 1..quarantine.max-attempts, backoff and jitter between them
+        R->>QC: verify(fileId)
+        QC->>Q: GET /api/v1/quarantine/by-file/fileId
+        Q--xQC: no answer
+    end
+    R-->>C: 503 Quarantine did not answer after 3 attempts
+    Note over R: no fall back to trusting the claim, and nothing stored
+```
+
+Proven by `ReleaseServiceTest`, `ReleaseHttpTest` against a stub Quarantine answering on
+the application's own socket, and `evidence/tests/verification-run.txt`.
 
 ## Failure and contention sequence
 
-Three ways the scan does not complete cleanly, all of which the client is told about
+Five ways a scan does not complete cleanly, all of which the client is told about
 in the caller's own language rather than as a 500.
 
 ```mermaid
@@ -188,17 +252,43 @@ sequenceDiagram
         Q->>Q: seven raise DataIntegrityViolationException
         Q-->>C: 1 x 201 and 7 x 409 File is already quarantined
     end
+
+    rect rgb(25, 55, 60)
+        Note over C,A: Circuit breaker open, with the bonus switch on
+        C->>Q: POST /api/v1/quarantine/{id}/scan
+        Q->>SC: claim(fileId) -> slot 1
+        Q->>CL: scan(fileId, CLEAN)
+        CL->>CL: breaker.allowCall() is false, state=OPEN
+        CL-->>Q: ScannerUnavailableException, zero HTTP calls
+        Q->>Q: state=FAILED, settled once
+        Q->>SC: release(slot 1) in finally
+        Q-->>C: 200 state=FAILED in milliseconds instead of the full budget
+        Note over CL: after the cooldown one probe is let through; success closes it
+    end
+
+    rect rgb(55, 25, 55)
+        Note over Q,A: The process is killed mid-scan
+        Q->>SC: slot 1 HELD, record SCANNING
+        Note over Q: SIGKILL - the finally block never runs, both rows stay as they are
+        Q->>Q: restart, ScanReclaimJob runs
+        Q->>SC: UPDATE scan_slots SET status='FREE' WHERE status='HELD' AND acquiredAt < cutoff
+        Q->>Q: UPDATE quarantine_records SET state='FAILED' WHERE state='SCANNING' AND no slot held
+        Note over Q: capacity is whole again and no record is stranded in SCANNING
+    end
 ```
 
-Proven by `QuarantineScanResilienceTest` (in-JVM, stub Scanner on the same port),
-`scripts/resilience.py` (`evidence/challenge-3a-resilience/run.txt`) and
+Proven by `QuarantineScanResilienceTest` and `QuarantineCircuitBreakerTest` (in-JVM, stub
+Scanner on the same port), `ScanReclaimJobTest`,
+`scripts/resilience.py` including its Part E (`evidence/challenge-3a-resilience/run.txt`),
+`scripts/reclaim.py` (`evidence/challenge-1-concurrency/reclaim-run.txt`) and
 `scripts/concurrency.py` (`evidence/challenge-1-concurrency/run.txt`).
 
 ## Quarantine state machine
 
 `QUARANTINED` leaves once. `SCANNING` exists only while a capacity slot is held, so a
 concurrent scan request can see it and is refused, and no record can end in
-`SCANNING` when a request finishes.
+`SCANNING` when a request finishes - or after a crash, because the reclaim sweep settles
+an abandoned scan as `FAILED`.
 
 ```mermaid
 stateDiagram-v2
@@ -207,7 +297,8 @@ stateDiagram-v2
     QUARANTINED --> QUARANTINED: 409 Scanner capacity exhausted<br/>(no slot, nothing changed)
     SCANNING --> CLEAN: Scanner result=CLEAN
     SCANNING --> INFECTED: Scanner result=INFECTED
-    SCANNING --> FAILED: Scanner result=FAIL, an unexpected<br/>result, or Scanner unreachable
+    SCANNING --> FAILED: Scanner result=FAIL, an unexpected<br/>result, Scanner unreachable,<br/>or the circuit stayed open
+    SCANNING --> FAILED: abandoned by a killed process,<br/>settled by ScanReclaimJob
     CLEAN --> [*]: Release accepts it (BR4)
     INFECTED --> [*]: Release refuses it (BR4)
     FAILED --> [*]: Release refuses it (BR4)
@@ -274,10 +365,13 @@ erDiagram
 | `quarantine_records` | Quarantine | unique `file_id` | BR3 |
 | `scan_slots` | Quarantine | `status='FREE'` in the claim predicate | Challenge 1 |
 
-The relationship above is the one invariant that is not a key: a `HELD` slot row names
-a file whose record is in `SCANNING`, and both are set back before the response is
-written. `ScanSlotRepository.release` matches on `slotNumber`, `status='HELD'` *and*
-`fileId`, so a late release cannot free a slot a different file has already retaken.
+The relationship above is the invariant that is not a key: a `HELD` slot row names a file
+whose record is in `SCANNING`, and both are set back before the response is written.
+`ScanSlotRepository.release` matches on `slotNumber`, `status='HELD'` *and* `fileId`, so a
+late release cannot free a slot a different file has already retaken. When a process dies
+before either statement runs, `ScanReclaimJob` restores the same invariant: slots held
+past `QUARANTINE_SLOT_STALE_MILLIS` are freed and the records still in `SCANNING` for them
+are settled `FAILED`, in that order, so a scan that is still running is never interrupted.
 
 ```mermaid
 erDiagram
@@ -300,7 +394,7 @@ erDiagram
     RELEASE_RECORD {
         uuid file_id PK "Intake's fileId is the identity"
         varchar state "16, always RELEASED"
-        timestamp quarantined_at "evidence accepted from the caller"
+        timestamp quarantined_at "verified against Quarantine's own record"
         timestamp released_at
     }
 ```
@@ -313,7 +407,8 @@ erDiagram
 
 | Caller | Callee | Endpoint | Body | Failure the caller must handle |
 |---|---|---|---|---|
-| Quarantine `ScannerClient` | Scanner | `POST /api/v1/scans` | `{fileId, mode}` | connect timeout, read timeout, 409 in-flight, no response at all |
+| Quarantine `ScannerClient` | Scanner | `POST /api/v1/scans` | `{fileId, mode}` | connect timeout, read timeout, 409 in-flight, no response at all, and its own open circuit |
+| Release `QuarantineClient` | Quarantine | `GET /api/v1/quarantine/by-file/{fileId}` | none, the id is in the path | connect timeout, read timeout, 404 meaning never quarantined, 5xx retried then answered as 503 |
 
 Contract: [`openapi/scanner.yaml`](openapi/scanner.yaml), consumed as
 `ScanResult{fileId, result, message, completedAt}`. The retry budget is
@@ -324,18 +419,34 @@ timeout (5000 ms), so the shipped defaults never time out. The evidence scripts 
 both values on the command line to put a slow scan deliberately over the budget without
 changing any code or packaged artifact.
 
+Release's read is a separate edge with a separate budget (`quarantine.*` in
+[`release-service/src/main/resources/application.yml`](../release-service/src/main/resources/application.yml)),
+configured exactly like the Scanner one: timeouts, attempts, backoff base and jitter.
+Neither client lives in a shared library: each service owns its outbound calls, so no
+service's build depends on another's resilience code, which is why the delay formula is
+duplicated in `ScannerClient` and `QuarantineClient` rather than factored into `common`.
+
 `X-Correlation-Id` is forwarded from the original client request through
-`MDC("correlationId")`, so one request is traceable across both service logs; the
-evidence files show the same correlation ID in the Quarantine and Scanner lines.
+`MDC("correlationId")`, so one request is traceable across every service log; the
+evidence files show the same correlation ID in the Quarantine and Scanner lines, and
+`scripts/verification.py` puts one ID on a release, its verification read and Quarantine's
+own answer.
 
 ## What is deliberately not here
 
 * No message broker, no async worker and no database sharing. The scan is
   synchronous: the caller waits for Scanner's verdict, which is what makes the
   timeout and retry behaviour observable.
-* No circuit breaker or bulkhead. Challenge 3A asks for a timeout, retry with
-  exponential backoff and jitter, and graceful failure; a breaker would hide the
-  retry pattern the evidence has to show.
+* A circuit breaker, but off by default. Challenge 3A names it as the bonus, and with it
+  on, a scan can be refused without ever reaching Scanner - the right behaviour during an
+  outage and the wrong one for demonstrating timeouts and backoff. It counts failed calls
+  rather than failed attempts, so enabling it never changes what a single scan's retry
+  budget looks like; `scanner.circuit-breaker.enabled` turns it on and
+  `scripts/resilience.py` Part E shows both settings side by side.
+* No orchestration of the release by Quarantine. The verdict owner does not decide when a
+  file is let go: the client calls Release and Release verifies the state at Quarantine.
+  Automatic release on a clean scan would put BR4 in the wrong service and make a release
+  a side effect of a call whose whole point is that it may already have taken effect.
 * No in-memory semaphore for capacity. The slot table is the contended resource so
   that the database, not one JVM, decides the winner and the allocation survives a
   restart — see `evidence/challenge-1-concurrency/README.md`.

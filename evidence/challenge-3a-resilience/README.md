@@ -2,7 +2,8 @@
 
 **Claim:** when the downstream Scanner service is slow or stopped, Quarantine times the
 call out, retries with exponential backoff plus jitter, fails gracefully, and no retry
-causes a duplicate effect.
+causes a duplicate effect. Part E adds the named bonus: once the circuit is open, calls
+are refused without an attempt until the dependency proves it has come back.
 
 Quarantine calls Scanner over REST in `ScannerClient`. Every call carries a connect
 timeout and a read timeout; a failed attempt is retried after
@@ -26,7 +27,10 @@ python3 scripts/resilience.py 2>&1 | tee evidence/challenge-3a-resilience/run.tx
 
 The script starts Scanner and Quarantine on its own ports against temporary file-based
 H2 databases, stops Scanner mid-run and starts it again, and prints `PASS`/`FAIL` per
-claim. It exits non-zero with `CHALLENGE_3A_FAIL` if any check does not hold.
+claim. Parts A to D run against an instance with the circuit breaker **off**, which is the
+shipped default and what the timeout and backoff evidence needs; Part E starts a second
+instance with it **on** against the same stopped Scanner. The script exits non-zero with
+`CHALLENGE_3A_FAIL` if any check does not hold.
 
 ## Evidence
 
@@ -48,6 +52,10 @@ attempts`, `exactly 1 stored scan`), so a fresh run upholds them with different 
 | The service recovers on its own | `run.txt` PART_C: with Scanner started again, a new file settles `CLEAN` in 119 ms while Quarantine reported `status=200 state=UP` at `/health` throughout |
 | A settled record is never re-decided | `run.txt` PART_C: re-scanning the file that failed during the outage returns 409 `File has already been scanned` |
 | The correlation is carried across the boundary | The outbound call forwards `X-Correlation-Id`; `QuarantineScanResilienceTest.forwardsTheCallersCorrelationIdToTheScanner` asserts the downstream received the caller's value |
+| Bonus: an open circuit stops calling a dead dependency | `run.txt` PART_E: two failed calls of `httpAttemptsMade=2` each, then `step=2 ... httpAttemptsMade=0` and `scanner_circuit_refused ... attemptsMade=0` |
+| Bonus: the refusal is cheaper, not fatal | `run.txt` PART_E: `the refused call cost 13 ms against [245, 225] ms for the real attempts`, and the scan still answers `200 state=FAILED` with `scannerSlots {"FREE": 2, "HELD": 0}` |
+| Bonus: it recovers by itself | `run.txt` PART_E: `scanner_circuit_tripped`, then after the cooldown `scanner_circuit_probe_allowed` and `scanner_circuit_closed`, with the probe costing exactly one call |
+| Bonus: the default really is off | `run.txt` PART_E: the instance that produced Parts A-D logs `circuitBreakerEnabled=false` and the second one logs `true` |
 
 ## Honest limitations
 
@@ -55,8 +63,15 @@ attempts`, `exactly 1 stored scan`), so a fresh run upholds them with different 
   file is not rescanned automatically when Scanner comes back. A real system would
   requeue it or run a reconciliation job; the same-file requeue is deliberately absent
   because the assignment's state machine forbids a second transition.
-- Circuit breaker is a bonus and is not implemented; the retry budget and the capacity
-  slots bound the blast radius instead. See `docs/business-rules.md`.
+- The circuit breaker is implemented but **off by default**, and with it on a scan can be
+  refused without reaching Scanner at all - correct during an outage, misleading as
+  evidence of timeouts and backoff. Everything in Parts A to D is therefore produced with
+  it disabled. It counts failed calls rather than failed attempts, so enabling it does not
+  change what one scan's budget looks like; see `quarantine-service/README.md`.
+- A tripped circuit still settles files `FAILED` rather than refusing the request with
+  503, because the scan must still land in one of the four settled states. A production
+  operator may prefer an explicit 503 for a refused scan; the trade-off is documented in
+  `docs/business-rules.md` rather than decided silently.
 - Backoff delays are measured with `Thread.sleep` on the request thread, so a caller
   waiting through an outage waits about the whole budget (roughly 0.9-1.9 s here).
 - The JDK HTTP client reports a read timeout as `HttpTimeoutException` or as
@@ -69,8 +84,10 @@ attempts`, `exactly 1 stored scan`), so a fresh run upholds them with different 
 `QuarantineScanResilienceTest` (stub Scanner on a real socket): transient 503 retried
 into a success with exactly three calls, a scanner slower than the read timeout failing
 inside the budget, the retry budget exhausted into `FAILED`, capacity refused while
-held, and the correlation forwarded. `ScannerClientTest` covers the backoff curve and
-the reason reported for a failed attempt.
+held, and the correlation forwarded. `QuarantineCircuitBreakerTest` walks the whole
+breaker lifecycle over HTTP - trip, zero-call refusal, cooldown, one probe, closed - and
+`ScannerCircuitBreakerTest` pins the transitions on a clock the test controls.
+`ScannerClientTest` covers the backoff curve and the reason reported for a failed attempt.
 
 Current test output is in `evidence/tests/quarantine-unit-tests.txt` and
 `evidence/tests/quarantine-http-tests.txt`.

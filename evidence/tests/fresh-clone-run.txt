@@ -1,0 +1,52 @@
+RESULT every README instruction followed from a clean clone succeeded: BUILD SUCCESS with 171 tests, 4x health UP, E2E PASS (32 steps), CHALLENGE_1_PASS, RECLAIM_PASS, CHALLENGE_3A_PASS, VERIFICATION_PASS, CHALLENGE_2_IDEMPOTENCY_PASS, and all four *_PERSISTENCE_PASS
+
+FRESH_CLONE_CHECK 2026-10-30T04:55:41Z
+CLONE_COMMAND git clone --branch improve/resilience-and-trust-boundary --single-branch https://github.com/2025tm93006/scalable-services-assignment.git
+CLONED_AT 7be293b evidence: recapture every run against the final build
+ENVIRONMENT openjdk version "25.0.5.0.3" 2026-10-24 LTS | Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+INSTRUCTIONS_FOLLOWED README.md only (Prerequisites, Build and run, the script list)
+
+== README step: mvn clean package ==
+[INFO] Tests run: 34, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building jar: /private/tmp/fresh-clone/scanner-service/target/scanner-service-1.0.0-SNAPSHOT.jar
+[INFO] Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.539 s -- in com.bits.secure.release.ReleaseServiceTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in com.bits.secure.release.QuarantineClientTest
+[INFO] Tests run: 27, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.860 s -- in com.bits.secure.release.ReleaseHttpTest
+[INFO] Tests run: 54, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building jar: /private/tmp/fresh-clone/release-service/target/release-service-1.0.0-SNAPSHOT.jar
+[INFO] BUILD SUCCESS
+
+== README step: start the four services ==
+== README step: bash scripts/health.sh ==
+GET http://localhost:8081/health
+{"timestamp":"2026-10-30T04:57:00.127799Z","service":"intake-service","status":"UP"}
+GET http://localhost:8082/health
+{"status":"UP","timestamp":"2026-10-30T04:57:00.182893Z","service":"quarantine-service"}
+GET http://localhost:8083/health
+{"service":"scanner-service","timestamp":"2026-10-30T04:57:00.241229Z","status":"UP"}
+GET http://localhost:8084/health
+{"service":"release-service","status":"UP","timestamp":"2026-10-30T04:57:00.296550Z"}
+== README step: bash scripts/e2e.sh ==
+ok  BR4 a client cannot release an infected file by claiming it is CLEAN -> HTTP 409
+ok  BR4 refused the false claim with: Quarantine reports this file as INFECTED, not CLEAN
+ok  BR4 nothing was stored for the refused file -> HTTP 404
+ok  quarantine reports its own state -> HTTP 200
+ok  final quarantine summary: {"total":2,"byState":{"QUARANTINED":0,"SCANNING":0,"CLEAN":1,"INFECTED":1,"FAILED":0},"scannerSlots":{"FREE":2,"HELD":0},"capacity":2}
+E2E PASS fileId=8a55e9ea-ff81-4dc1-950f-b2f9e41c0834 infectedFileId=587db996-af51-44ab-ba14-a9ef0753e743 correlationId=e2e-20261030045700 at 2026-10-30T04:57:01Z
+== scripts/concurrency.py ==
+
+CHALLENGE_1_PASS exactly 2 of 20 scans ran at a time and one record existed per file
+== scripts/reclaim.py ==
+RECLAIM_PASS a killed scan left a HELD slot and a SCANNING record, and the sweep returned both without touching the database by hand
+== scripts/resilience.py ==
+CHALLENGE_3A_PASS timeout, retry with backoff and jitter, graceful failure and the circuit breaker bonus were all observed, and no retry produced a duplicate
+== scripts/verification.py ==
+VERIFICATION_PASS Release answers to Quarantine, not to the caller: a claimed CLEAN that Quarantine denies is refused, and a state that cannot be checked is not released
+== scripts/idempotency.sh (Intake is up) ==
+DATABASE_EVIDENCE {"databaseRecordCount": 1, "fileId": "94741ddc-9d66-49c7-aa97-0cfb7a122591", "idempotencyKey": "parallel-12a1148d-d3ca-4620-9790-58e469e936e4"}
+CHALLENGE_2_IDEMPOTENCY_PASS
+== the four persistence scripts ==
+INTAKE_PERSISTENCE_PASS
+QUARANTINE_PERSISTENCE_PASS
+SCANNER_PERSISTENCE_PASS
+RELEASE_PERSISTENCE_PASS

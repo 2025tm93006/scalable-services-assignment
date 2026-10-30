@@ -168,7 +168,7 @@ class QuarantineServiceTest {
     @Test
     void aScanAlreadyInFlightIsRefusedRatherThanStartedAgain() {
         QuarantineRecord record = quarantined();
-        record.startScan();
+        record.startScan(SCANNED_AT);
         when(repository.findById(record.getId())).thenReturn(Optional.of(record));
 
         ConflictException conflict = assertThrows(ConflictException.class, () -> service.scan(record.getId()));
@@ -184,6 +184,30 @@ class QuarantineServiceTest {
 
         assertThrows(NotFoundException.class, () -> service.scan(id));
         assertThrows(NotFoundException.class, () -> service.get(id));
+    }
+
+    @Test
+    void aFileCanBeReadThroughTheQuarantineRecordItOwns() {
+        QuarantineRecord record = quarantined();
+        when(repository.findByFileId(record.getFileId())).thenReturn(Optional.of(record));
+
+        QuarantineResponse view = service.getByFileId(record.getFileId());
+
+        // This is the response Release verifies against: state and quarantinedAt, by fileId.
+        assertEquals(record.getId(), view.id());
+        assertEquals("QUARANTINED", view.state());
+        assertEquals(record.getQuarantinedAt(), view.quarantinedAt());
+    }
+
+    @Test
+    void aFileThatWasNeverQuarantinedIsNotFoundThroughEitherAddress() {
+        UUID unknown = UUID.randomUUID();
+        when(repository.findByFileId(unknown)).thenReturn(Optional.empty());
+
+        NotFoundException failure = assertThrows(NotFoundException.class,
+                () -> service.getByFileId(unknown));
+
+        assertTrue(failure.getMessage().contains(String.valueOf(unknown)), failure.getMessage());
     }
 
     @Test

@@ -26,6 +26,9 @@ public final class StubScannerSupport {
     private static final Map<String, AtomicInteger> CALLS = new ConcurrentHashMap<>();
     private static final AtomicInteger IN_FLIGHT = new AtomicInteger();
     private static final AtomicInteger MAX_IN_FLIGHT = new AtomicInteger();
+    // Monotonic for the whole test run and deliberately not cleared by reset(), so a test
+    // can assert that a call reached the stub at all - a circuit-refused scan must not.
+    private static final AtomicInteger TOTAL_CALLS = new AtomicInteger();
     private static volatile long delayMillis = 0;
     private static volatile int failingAttempts = 0;
     private static volatile String lastCorrelationId = null;
@@ -59,6 +62,11 @@ public final class StubScannerSupport {
         return seen == null ? 0 : seen.get();
     }
 
+    /** Every call this stub has ever handled in this JVM run, across all files. */
+    static int totalCalls() {
+        return TOTAL_CALLS.get();
+    }
+
     @RestController
     static class StubScanner {
         @PostMapping("/api/v1/scans")
@@ -66,6 +74,7 @@ public final class StubScannerSupport {
                                                  @RequestHeader(name = "X-Correlation-Id", required = false)
                                                  String correlationId) {
             lastCorrelationId = correlationId;
+            TOTAL_CALLS.incrementAndGet();
             int running = IN_FLIGHT.incrementAndGet();
             MAX_IN_FLIGHT.accumulateAndGet(running, Math::max);
             try {

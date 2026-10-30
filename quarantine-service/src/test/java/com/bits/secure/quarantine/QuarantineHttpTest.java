@@ -62,4 +62,28 @@ class QuarantineHttpTest {
                 "/api/v1/quarantine/_evidence/summary", Map.class);
         assertThat(evidence.getBody()).containsEntry("total", 1);
     }
+
+    @Test
+    void theSameRecordIsReachableByTheFileIdItBelongsTo() {
+        // The address another service uses to verify a state it was never told about.
+        QuarantineRequest request = new QuarantineRequest(UUID.randomUUID(), "CLEAN");
+        QuarantineResponse created = http.postForEntity("/api/v1/quarantine", request,
+                QuarantineResponse.class).getBody();
+        assertThat(created).isNotNull();
+        http.postForEntity("/api/v1/quarantine/" + created.id() + "/scan", null, QuarantineResponse.class);
+
+        QuarantineResponse byFileId = http.getForEntity(
+                "/api/v1/quarantine/by-file/{fileId}", QuarantineResponse.class,
+                created.fileId()).getBody();
+        QuarantineResponse byRecordId = http.getForEntity(
+                "/api/v1/quarantine/{id}", QuarantineResponse.class, created.id()).getBody();
+
+        assertThat(byFileId).isNotNull();
+        assertThat(byFileId).isEqualTo(byRecordId);
+        assertThat(byFileId.state()).isEqualTo("CLEAN");
+        assertThat(byFileId.quarantinedAt()).isEqualTo(created.quarantinedAt());
+
+        assertThat(http.getForEntity("/api/v1/quarantine/by-file/{fileId}", String.class,
+                UUID.randomUUID()).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
 }

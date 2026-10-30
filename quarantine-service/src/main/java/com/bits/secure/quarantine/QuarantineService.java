@@ -73,7 +73,7 @@ public class QuarantineService {
             throw new ConflictException("Scanner capacity exhausted");
         }
 
-        record.startScan();
+        record.startScan(Instant.now());
         writer.save(record);
         log.info("scan_started fileId={} recordId={} slot={} mode={}",
                 record.getFileId(), record.getId(), slot, record.getScannerMode());
@@ -100,6 +100,17 @@ public class QuarantineService {
     @Transactional(readOnly = true)
     public QuarantineResponse get(UUID id) {
         return response(findRecord(id));
+    }
+
+    /**
+     * The authoritative answer for one file, addressed by Intake's id rather than by the
+     * quarantine record's own. Release reads this instead of being told the state, so a
+     * client cannot get a file released by claiming it is CLEAN.
+     */
+    @Transactional(readOnly = true)
+    public QuarantineResponse getByFileId(UUID fileId) {
+        return response(repository.findByFileId(fileId)
+                .orElseThrow(() -> new NotFoundException("No quarantine record for file " + fileId)));
     }
 
     @Transactional(readOnly = true)

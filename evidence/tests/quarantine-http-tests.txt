@@ -1,8 +1,12 @@
 -------------------------------------------------------------------------------
 Test set: com.bits.secure.quarantine.QuarantineHttpTest
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.282 s -- in com.bits.secure.quarantine.QuarantineHttpTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.201 s -- in com.bits.secure.quarantine.QuarantineHttpTest
 -------------------------------------------------------------------------------
 Test set: com.bits.secure.quarantine.QuarantineScanResilienceTest
 -------------------------------------------------------------------------------
-Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.921 s -- in com.bits.secure.quarantine.QuarantineScanResilienceTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.119 s -- in com.bits.secure.quarantine.QuarantineScanResilienceTest
+-------------------------------------------------------------------------------
+Test set: com.bits.secure.quarantine.QuarantineCircuitBreakerTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.871 s -- in com.bits.secure.quarantine.QuarantineCircuitBreakerTest

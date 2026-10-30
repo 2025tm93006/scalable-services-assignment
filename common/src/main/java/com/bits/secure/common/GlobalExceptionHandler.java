@@ -33,6 +33,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return error(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
+    /**
+     * A dependency outage is not this service failing, so it gets 503 and a warning rather
+     * than the error-level 500 the catch-all below has to reserve for real bugs.
+     */
+    @ExceptionHandler(ServiceUnavailableException.class)
+    ResponseEntity<Object> serviceUnavailable(ServiceUnavailableException ex, HttpServletRequest request) {
+        log.warn("dependency_unavailable path={} message={}", request.getRequestURI(), ex.getMessage());
+        return error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     ResponseEntity<Object> badRequest(IllegalArgumentException ex, HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage(), request);

@@ -18,6 +18,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 QUARANTINE_JAR = ROOT / 'quarantine-service/target/quarantine-service-1.0.0-SNAPSHOT.jar'
 SCANNER_JAR = ROOT / 'scanner-service/target/scanner-service-1.0.0-SNAPSHOT.jar'
+RELEASE_JAR = ROOT / 'release-service/target/release-service-1.0.0-SNAPSHOT.jar'
 
 
 def java_executable():
@@ -89,6 +90,16 @@ def stop(process):
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait()
+
+
+def kill_hard(process):
+    """SIGKILL: simulates a process that stopped without a chance to clean up. A graceful
+    terminate can let an in-flight request reach its finally block and release its own
+    capacity slot, which is exactly the behaviour the reclaim sweep must not be tested on."""
+    if process is None or process.poll() is not None:
+        return
+    process.kill()
+    process.wait(timeout=15)
 
 
 def is_listening(port):

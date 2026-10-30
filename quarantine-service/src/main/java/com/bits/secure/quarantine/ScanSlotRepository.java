@@ -35,6 +35,19 @@ public interface ScanSlotRepository extends JpaRepository<ScanSlot, Integer> {
             + "where s.slotNumber = :slotNumber and s.status = 'HELD' and s.fileId = :fileId")
     int release(@Param("slotNumber") int slotNumber, @Param("fileId") UUID fileId, @Param("when") Instant when);
 
+    /**
+     * Frees every slot that has been held since before the cutoff, which is how a scan
+     * whose process died mid-call stops blocking the capacity forever. Safe to run
+     * twice: the second sweep finds those rows already FREE. The cutoff must be beyond
+     * the whole Scanner retry budget, otherwise it would free a slot whose scan can
+     * still finish and report its verdict.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update ScanSlot s set s.status = 'FREE', s.fileId = null, s.releasedAt = :when "
+            + "where s.status = 'HELD' and s.acquiredAt < :cutoff")
+    int releaseStale(@Param("cutoff") Instant cutoff, @Param("when") Instant when);
+
     long countByStatus(String status);
 
     Optional<ScanSlot> findByFileId(UUID fileId);

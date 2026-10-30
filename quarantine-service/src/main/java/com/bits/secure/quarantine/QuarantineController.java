@@ -37,6 +37,11 @@ public class QuarantineController {
         return service.evidence();
     }
 
+    @GetMapping("/by-file/{fileId}")
+    public QuarantineResponse getByFileId(@PathVariable UUID fileId) {
+        return service.getByFileId(fileId);
+    }
+
     @GetMapping("/{id}")
     public QuarantineResponse get(@PathVariable UUID id) {
         return service.get(id);

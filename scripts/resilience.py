@@ -15,6 +15,10 @@ Part C  Scanner is started again. A new file scans cleanly and the FAILED record
 Part D  The same scan request sent straight to Scanner twice returns the identical
         stored result, which is what makes Part A's retries safe (links to
         Challenge 2's idempotency requirement).
+Part E  The Challenge 3A bonus, on a second Quarantine started with the circuit breaker
+        enabled: once two calls have each spent their whole retry budget the circuit
+        opens, the next scan is refused WITHOUT a single HTTP attempt and is far cheaper,
+        and one probe after the cooldown closes it again once Scanner is back.
 
 Scanner and Quarantine run on their own ports against temporary file-based H2
 databases, so the script is repeatable and leaves nothing behind.
@@ -35,6 +39,10 @@ READ_TIMEOUT_MILLIS = 500
 MAX_ATTEMPTS = 3
 RETRY_BASE_MILLIS = 200
 RETRY_JITTER_MILLIS = 150
+# Part E budget: two failed calls of two attempts each, then a 2.5 s cooldown.
+CB_FAILURE_THRESHOLD = 2
+CB_ATTEMPTS = 2
+CB_OPEN_MILLIS = 2500
 
 failures = []
 
@@ -95,6 +103,7 @@ def main():
             'quarantine.max-concurrent-scans': 2}
         process = None
         scanner_process = None
+        breaker_process = None
         try:
             process = services.start(java, services.QUARANTINE_JAR, quarantine_port,
                                      quarantine_settings, quarantine_log)
@@ -213,12 +222,105 @@ def main():
                 print('  ' + line, flush=True)
             for line in services.lines(quarantine_log, 'scanner_attempt_failed')[-4:]:
                 print('  ' + line, flush=True)
+
+            # --- Part E: the bonus - stop calling a Scanner that is known to be down ---
+            print('\nPART_E_CIRCUIT_BREAKER refuses_calls_while_the_dependency_is_down', flush=True)
+            services.stop(scanner_process)
+            scanner_process = None
+            deadline = time.monotonic() + 20
+            while services.is_listening(scanner_port) and time.monotonic() < deadline:
+                time.sleep(0.2)
+            check(not services.is_listening(scanner_port),
+                  f'Scanner is stopped again on port {scanner_port}')
+
+            breaker_port = services.free_port()
+            breaker_base = f'http://127.0.0.1:{breaker_port}'
+            breaker_log = directory / 'quarantine-breaker.log'
+            breaker_process = services.start(java, services.QUARANTINE_JAR, breaker_port, dict(
+                quarantine_settings, **{
+                    'spring.datasource.url': 'jdbc:h2:file:' + str(directory / 'quarantine-breaker'),
+                    'scanner.base-url': f'http://127.0.0.1:{scanner_port}',
+                    'scanner.max-attempts': CB_ATTEMPTS,
+                    'scanner.retry-jitter-millis': 0,
+                    'scanner.circuit-breaker.enabled': 'true',
+                    'scanner.circuit-breaker.failure-threshold': CB_FAILURE_THRESHOLD,
+                    'scanner.circuit-breaker.open-millis': CB_OPEN_MILLIS}), breaker_log)
+            configured = services.lines(breaker_log, 'scanner_client_configured')
+            check(len(configured) == 1
+                  and 'circuitBreakerEnabled=true' in configured[0]
+                  and f'circuitFailureThreshold={CB_FAILURE_THRESHOLD}' in configured[0]
+                  and f'circuitOpenMillis={CB_OPEN_MILLIS}' in configured[0],
+                  'this Quarantine started with the breaker on: threshold '
+                  f'{CB_FAILURE_THRESHOLD}, cooldown {CB_OPEN_MILLIS} ms')
+            print('  BREAKER_LOG ' + (configured[0] if configured else 'no config line'), flush=True)
+            main_config = services.lines(quarantine_log, 'scanner_client_configured')
+            check(bool(main_config) and 'circuitBreakerEnabled=false' in main_config[0],
+                  'the instance that produced Parts A-D kept the breaker off, so that '
+                  'evidence is unchanged')
+
+            durations = []
+            refused_id = None
+            for step in range(CB_FAILURE_THRESHOLD + 1):
+                record_id, file_id = scan_record(breaker_base, 'CLEAN')
+                status, settled, elapsed = timed_scan(breaker_base, record_id)
+                durations.append(elapsed)
+                attempts = services.lines(breaker_log, f'scanner_call fileId={file_id} attempt=')
+                print(f'  SCAN step={step} status={status} state={settled["state"]} '
+                      f'elapsedMillis={elapsed} httpAttemptsMade={len(attempts)}', flush=True)
+                check(status == 200 and settled['state'] == 'FAILED',
+                      f'step {step} settled FAILED either way, so the caller still gets a state')
+                if step < CB_FAILURE_THRESHOLD:
+                    check(len(attempts) == CB_ATTEMPTS,
+                          f'step {step} spent its whole budget of {CB_ATTEMPTS} attempts')
+                else:
+                    refused_id = file_id
+                    check(len(attempts) == 0,
+                          'the call after the threshold made no HTTP attempt at all')
+
+            refused_ms = durations[CB_FAILURE_THRESHOLD]
+            check(all(refused_ms < duration for duration in durations[:CB_FAILURE_THRESHOLD]),
+                  f'the refused call cost {refused_ms} ms against '
+                  f'{durations[:CB_FAILURE_THRESHOLD]} ms for the real attempts')
+            for line in services.lines(breaker_log, 'scanner_circuit'):
+                print('  BREAKER_LOG ' + line, flush=True)
+            check(any(f'fileId={refused_id}' in line for line in
+                      services.lines(breaker_log, 'scanner_circuit_refused')),
+                  'the open circuit logged the refusal it made')
+            _, breaker_evidence = services.call(breaker_base, 'GET',
+                                                '/api/v1/quarantine/_evidence/summary')
+            print('  EVIDENCE ' + json.dumps(breaker_evidence, sort_keys=True), flush=True)
+            check(breaker_evidence['scannerSlots'] == {'FREE': 2, 'HELD': 0},
+                  'refused scans gave their capacity slots back')
+
+            restarted_log = directory / 'scanner-3.log'
+            scanner_process = services.start(java, services.SCANNER_JAR, scanner_port, {
+                'spring.datasource.url': 'jdbc:h2:file:' + str(directory / 'scanner'),
+                'spring.datasource.username': 'challenge3a',
+                'spring.datasource.password': 'test_only',
+                'scanner.slow-millis': SLOW_MILLIS}, restarted_log)
+            time.sleep(CB_OPEN_MILLIS / 1000.0 + 0.3)
+            record_id, probe_file = scan_record(breaker_base, 'CLEAN')
+            status, probe, elapsed = timed_scan(breaker_base, record_id)
+            print(f'  PROBE status={status} state={probe["state"]} elapsedMillis={elapsed}', flush=True)
+            check(status == 200 and probe['state'] == 'CLEAN',
+                  'one probe after the cooldown reached Scanner and got a verdict')
+            check(len(services.lines(breaker_log, f'scanner_call fileId={probe_file}')) == 1,
+                  'the probe was one call, not the whole queue')
+            closed = services.lines(breaker_log, 'scanner_circuit_closed')
+            check(len(closed) >= 1, 'the circuit closed again after the successful probe')
+            for line in services.lines(breaker_log, 'scanner_circuit_tripped',
+                                       'scanner_circuit_probe_allowed', 'scanner_circuit_closed'):
+                print('  BREAKER_LIFECYCLE ' + line, flush=True)
+
+            services.stop(breaker_process)
+            breaker_process = None
         except BaseException as crashed:
             print('SCRIPT_ERROR', type(crashed).__name__, crashed, file=sys.stderr, flush=True)
             for line in services.lines(quarantine_log, 'scanner_', 'scan_')[-15:]:
                 print('  QUARANTINE_LOG ' + line, file=sys.stderr, flush=True)
             raise
         finally:
+            services.stop(breaker_process)
             services.stop(scanner_process)
             services.stop(process)
 
@@ -227,8 +329,9 @@ def main():
         for description in failures:
             print('  ' + description, file=sys.stderr, flush=True)
         return 1
-    print('\nCHALLENGE_3A_PASS timeout, retry with backoff and jitter, and graceful '
-          'failure were all observed, and no retry produced a duplicate', flush=True)
+    print('\nCHALLENGE_3A_PASS timeout, retry with backoff and jitter, graceful failure and '
+          'the circuit breaker bonus were all observed, and no retry produced a duplicate',
+          flush=True)
     return 0
 
 

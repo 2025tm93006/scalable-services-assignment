@@ -1,8 +1,28 @@
-CAPTURED_UTC 2026-10-25T08:00:24.671734+00:00
-BRANCH feature/release-service
+CAPTURED_UTC 2026-10-30T04:47:30+00:00
+BRANCH improve/resilience-and-trust-boundary
 JAVA_HOME /Library/Java/JavaVirtualMachines/sapmachine-25.jdk/Contents/Home
-JAVA_RUNTIME 25.0.5 (Maven 3.9.16); compilation target release 21
+JAVA_RUNTIME 25.0.5.0.3 (Maven 3.9.16); compilation target release 21
+OS macOS 27.0.1 arm64
 SOURCE /Users/C5421903/Documents/Learning/BITS/Scalable Services/scalable-services-assignment
-COMMAND mvn -B -ntp -pl release-service -am package
-RESULT BUILD SUCCESS; Release unit 12 + HTTP/H2 21 = 33 tests; 0 failures/errors/skipped
-RESTART_CHECK python3 scripts/release-persistence.py; RELEASE_PERSISTENCE_PASS; isolated temporary file database
+COMMAND mvn -B -ntp clean package
+RESULT BUILD SUCCESS; Release 54 tests = 19 service + 8 quarantine client + 27 HTTP/H2;
+  0 failures/errors/skipped
+COVERAGE ReleaseServiceTest (BR4 claim checks, the verified state, never-quarantined, in-flight
+  scan, timestamp tolerance to the millisecond, unreachable Quarantine answered 503, replay,
+  primary-key race, unrelated-failure handling), QuarantineClientTest (verification retry curve,
+  jitter bounds, exponent cap, failure reason, budget validation), ReleaseHttpTest (replay,
+  8 simultaneous releases, validation, 400/404/405/409/415/503, the shared error model,
+  correlation IDs, health, and that a replay performs no verification call)
+TEST_ISOLATION in-memory H2; the Quarantine dependency is StubQuarantineSupport, a nested
+  @RestController in the same test application component-scanned on the application's own port,
+  deliberately not registered as a @Bean, so no external service is started by the suite
+TEST_PORT 18085 pinned by ReleaseHttpTest, which moved from RANDOM_PORT to DEFINED_PORT because a
+  service-to-service call needs a base URL that can point back at the stub in the same context
+VERIFICATION_RELEASED quarantineState supplied by a caller is now only a claim; the decision uses
+  GET /api/v1/quarantine/by-file/{fileId}, 409 on a mismatch and 503 when Quarantine never answers
+CHALLENGE_SCRIPTS python3 scripts/verification.py starts Scanner, Quarantine and Release on
+  ephemeral ports with temporary databases; output is evidence/tests/verification-run.txt
+RESTART_CHECK python3 scripts/release-persistence.py; RELEASE_PERSISTENCE_PASS; isolated temporary
+  file database, and the post-restart replay is asserted with Quarantine stopped
+NOTE Surefire runs with -Dnet.bytebuddy.experimental=true (root pom) so the same build is green on
+  Java 21 and Java 25
