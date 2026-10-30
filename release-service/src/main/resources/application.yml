@@ -15,6 +15,15 @@ spring:
     hibernate:
       ddl-auto: ${DDL_AUTO:update}
     open-in-view: false
+quarantine:
+  # Release asks Quarantine what the state really is instead of trusting the caller.
+  base-url: ${QUARANTINE_BASE_URL:http://localhost:8082}
+  connect-timeout-millis: ${QUARANTINE_CONNECT_TIMEOUT_MILLIS:300}
+  read-timeout-millis: ${QUARANTINE_READ_TIMEOUT_MILLIS:2000}
+  max-attempts: ${QUARANTINE_MAX_ATTEMPTS:3}
+  # Delay is retry-base * 2^(attempt-1) plus a random 0..retry-jitter milliseconds.
+  retry-base-millis: ${QUARANTINE_RETRY_BASE_MILLIS:100}
+  retry-jitter-millis: ${QUARANTINE_RETRY_JITTER_MILLIS:100}
 logging:
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %logger{36} - %msg%n"

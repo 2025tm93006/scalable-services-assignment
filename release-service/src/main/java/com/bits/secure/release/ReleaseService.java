@@ -17,19 +17,26 @@ public class ReleaseService {
     private static final Logger log = LoggerFactory.getLogger(ReleaseService.class);
     private final ReleaseRepository repository;
     private final ReleaseRecordWriter writer;
+    private final QuarantineClient quarantine;
 
-    public ReleaseService(ReleaseRepository repository, ReleaseRecordWriter writer) {
+    public ReleaseService(ReleaseRepository repository, ReleaseRecordWriter writer,
+                          QuarantineClient quarantine) {
         this.repository = repository;
         this.writer = writer;
+        this.quarantine = quarantine;
     }
 
     public ReleaseResponse release(ReleaseRequest request) {
         var prior = repository.findById(request.fileId());
         if (prior.isPresent()) {
+            // Replaying a finished release needs no outbound call: the file is already
+            // out, and asking Quarantine again could only turn a working dependency's
+            // outage into an error for a request that is already answered.
             log.info("release_replay fileId={}", prior.get().getFileId());
             return ReleaseResponse.from(prior.get());
         }
-        requireReleasable(request);
+        requireClaimedReleasable(request);
+        requireVerifiedReleasable(request);
 
         // Millisecond precision keeps the stored record byte-identical to the
         // response that created it, so a replay does not differ by rounding.
@@ -54,7 +61,7 @@ public class ReleaseService {
                 .orElseThrow(() -> new NotFoundException("File has not been released: " + fileId));
     }
 
-    private void requireReleasable(ReleaseRequest request) {
+    private void requireClaimedReleasable(ReleaseRequest request) {
         if (!CLEAN.equals(request.quarantineState())) {
             log.warn("release_rejected fileId={} quarantineState={}",
                     request.fileId(), request.quarantineState());
@@ -64,5 +71,45 @@ public class ReleaseService {
             log.warn("release_rejected fileId={} quarantinedAt=null", request.fileId());
             throw new ConflictException("File must be quarantined before release");
         }
+    }
+
+    /**
+     * The caller's claim is only a claim. Quarantine owns the state, so the release is
+     * granted against what Quarantine's own record says - which is what stops a client from
+     * releasing a file by typing CLEAN. A Quarantine that cannot be reached at all is a 503
+     * rather than a fall back to trusting the caller: not being able to check is not the
+     * same as being allowed to release.
+     */
+    private void requireVerifiedReleasable(ReleaseRequest request) {
+        QuarantineClient.QuarantineView record = quarantine.findForFile(request.fileId())
+                .orElseThrow(() -> {
+                    log.warn("release_rejected fileId={} reason=no_quarantine_record", request.fileId());
+                    return new ConflictException("No quarantine record for this file");
+                });
+        if (!CLEAN.equals(record.state())) {
+            log.warn("release_rejected fileId={} claimed={} verified={}",
+                    request.fileId(), request.quarantineState(), record.state());
+            throw new ConflictException(
+                    "Quarantine reports this file as " + record.state() + ", not " + CLEAN);
+        }
+        if (record.quarantinedAt() == null
+                || !sameInstantToTheMillisecond(record.quarantinedAt(), request.quarantinedAt())) {
+            log.warn("release_rejected fileId={} claimedQuarantinedAt={} verifiedQuarantinedAt={}",
+                    request.fileId(), request.quarantinedAt(), record.quarantinedAt());
+            throw new ConflictException("quarantinedAt does not match the quarantine record");
+        }
+        log.info("release_verified fileId={} quarantineState={} quarantineRecordId={}",
+                request.fileId(), record.state(), record.id());
+    }
+
+    /**
+     * Compared to the millisecond rather than exactly. A database column stores this stamp
+     * with limited fractional precision, so a client that faithfully echoes what the create
+     * response returned can differ from a fresh read in the last microseconds; that is
+     * rounding, not a forged timestamp, and refusing it would depend on the host clock.
+     * Anything a millisecond apart is still refused.
+     */
+    private static boolean sameInstantToTheMillisecond(Instant verified, Instant claimed) {
+        return verified.truncatedTo(ChronoUnit.MILLIS).equals(claimed.truncatedTo(ChronoUnit.MILLIS));
     }
 }

@@ -102,6 +102,17 @@ public class QuarantineService {
         return response(findRecord(id));
     }
 
+    /**
+     * The authoritative answer for one file, addressed by Intake's id rather than by the
+     * quarantine record's own. Release reads this instead of being told the state, so a
+     * client cannot get a file released by claiming it is CLEAN.
+     */
+    @Transactional(readOnly = true)
+    public QuarantineResponse getByFileId(UUID fileId) {
+        return response(repository.findByFileId(fileId)
+                .orElseThrow(() -> new NotFoundException("No quarantine record for file " + fileId)));
+    }
+
     @Transactional(readOnly = true)
     public QuarantineEvidence evidence() {
         Map<String, Long> byState = new LinkedHashMap<>();

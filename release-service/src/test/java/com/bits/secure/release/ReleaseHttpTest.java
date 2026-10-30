@@ -26,9 +26,18 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, properties = {
         "spring.datasource.url=jdbc:h2:mem:release-http-test;DB_CLOSE_DELAY=-1",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        // Release verifies against Quarantine, so the stub answers on this port; a tiny
+        // budget keeps the unreachable case cheap to test.
+        "server.port=18085",
+        "quarantine.base-url=http://localhost:18085",
+        "quarantine.connect-timeout-millis=200",
+        "quarantine.read-timeout-millis=500",
+        "quarantine.max-attempts=2",
+        "quarantine.retry-base-millis=20",
+        "quarantine.retry-jitter-millis=0"
 })
 class ReleaseHttpTest {
     private static final String ID = "3f2a4e6c-1b2d-4c5e-8f90-123456789abc";
@@ -40,6 +49,7 @@ class ReleaseHttpTest {
     @BeforeEach
     void clearDatabase() {
         repository.deleteAll();
+        StubQuarantineSupport.reset();
     }
 
     @Test
@@ -139,6 +149,77 @@ class ReleaseHttpTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals("UP", mapper.readTree(response.getBody()).get("status").asText());
         assertNotNull(response.getHeaders().getFirst("X-Correlation-Id"));
+    }
+
+    @Test
+    void aClientCannotReleaseAFileQuarantineReportsAsInfected() throws Exception {
+        StubQuarantineSupport.answer("INFECTED", QUARANTINED_AT);
+
+        ResponseEntity<String> refused = post(payload("CLEAN"));
+
+        assertError(refused, 409);
+        assertTrue(mapper.readTree(refused.getBody()).get("message").asText().contains("INFECTED"),
+                refused.getBody());
+        assertEquals(0, repository.count());
+        assertEquals(1, StubQuarantineSupport.calls());
+    }
+
+    @Test
+    void aFileThatWasNeverQuarantinedCannotBeReleased() throws Exception {
+        StubQuarantineSupport.recordAbsent();
+
+        assertError(post(payload("CLEAN")), 409);
+        assertEquals(0, repository.count());
+    }
+
+    @Test
+    void aTimestampThatDoesNotMatchTheQuarantineRecordIsRefused() throws Exception {
+        StubQuarantineSupport.answer("CLEAN", "2026-10-26T08:00:00Z");
+
+        assertError(post(payload("CLEAN")), 409);
+        assertEquals(0, repository.count());
+    }
+
+    @Test
+    void anUnreachableQuarantineRefusesTheReleaseWith503AndStoresNothing() throws Exception {
+        StubQuarantineSupport.failingWith(500);
+
+        ResponseEntity<String> unavailable = post(payload("CLEAN"));
+
+        // 503, not a silent fall back to trusting the caller's own claim.
+        assertError(unavailable, 503);
+        assertEquals(0, repository.count());
+        assertEquals(2, StubQuarantineSupport.calls(),
+                "a read is safe to repeat, so the whole budget was spent");
+    }
+
+    @Test
+    void replayingAFinishedReleaseDoesNotAskQuarantineAgain() throws Exception {
+        ResponseEntity<String> first = post(payload("CLEAN"));
+        assertEquals(201, first.getStatusCode().value());
+        int callsAfterTheRealRelease = StubQuarantineSupport.calls();
+
+        StubQuarantineSupport.failingWith(500);
+        ResponseEntity<String> replay = post(payload("CLEAN"));
+
+        assertEquals(201, replay.getStatusCode().value());
+        assertEquals(first.getBody(), replay.getBody());
+        assertEquals(callsAfterTheRealRelease, StubQuarantineSupport.calls(),
+                "a released file is answered from Release's own table");
+        assertEquals(1, repository.count());
+    }
+
+    @Test
+    void aQuarantineThatIsDownCannotUnmakeAFileThatWasAlreadyReleased() throws Exception {
+        assertEquals(201, post(payload("CLEAN")).getStatusCode().value());
+        int callsAfterTheRelease = StubQuarantineSupport.calls();
+        StubQuarantineSupport.failingWith(500);
+
+        ResponseEntity<String> read = http.getForEntity("/api/v1/releases/" + ID, String.class);
+
+        assertEquals(200, read.getStatusCode().value());
+        assertEquals(callsAfterTheRelease, StubQuarantineSupport.calls(),
+                "reading a release never calls out");
     }
 
     private ResponseEntity<String> post(String body) {

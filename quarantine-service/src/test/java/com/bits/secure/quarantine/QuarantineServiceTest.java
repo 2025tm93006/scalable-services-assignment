@@ -187,6 +187,30 @@ class QuarantineServiceTest {
     }
 
     @Test
+    void aFileCanBeReadThroughTheQuarantineRecordItOwns() {
+        QuarantineRecord record = quarantined();
+        when(repository.findByFileId(record.getFileId())).thenReturn(Optional.of(record));
+
+        QuarantineResponse view = service.getByFileId(record.getFileId());
+
+        // This is the response Release verifies against: state and quarantinedAt, by fileId.
+        assertEquals(record.getId(), view.id());
+        assertEquals("QUARANTINED", view.state());
+        assertEquals(record.getQuarantinedAt(), view.quarantinedAt());
+    }
+
+    @Test
+    void aFileThatWasNeverQuarantinedIsNotFoundThroughEitherAddress() {
+        UUID unknown = UUID.randomUUID();
+        when(repository.findByFileId(unknown)).thenReturn(Optional.empty());
+
+        NotFoundException failure = assertThrows(NotFoundException.class,
+                () -> service.getByFileId(unknown));
+
+        assertTrue(failure.getMessage().contains(String.valueOf(unknown)), failure.getMessage());
+    }
+
+    @Test
     void summaryAddsTheStatesItCountsAndReportsTheCapacity() {
         when(repository.countByState(QuarantineState.QUARANTINED)).thenReturn(2L);
         when(repository.countByState(QuarantineState.SCANNING)).thenReturn(1L);

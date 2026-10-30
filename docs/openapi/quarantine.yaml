@@ -4,11 +4,13 @@ info:
   version: 1.0.0
   description: >
     Quarantine owns the quarantine record and its state machine. It is the only
-    service that calls another service: a scan claims one scanner capacity slot,
-    asks Scanner over REST with connect and read timeouts, retries with exponential
-    backoff plus jitter, and stores Scanner's verdict. A record settles once and is
-    never transitioned again, and a Scanner that stays unreachable settles the file
-    as FAILED instead of leaving the caller with a half-run scan.
+    service that calls out over REST: a scan claims one scanner capacity slot, asks
+    Scanner with connect and read timeouts, retries with exponential backoff plus
+    jitter, and stores Scanner's verdict. A record settles once and is never
+    transitioned again, and a Scanner that stays unreachable settles the file as
+    FAILED instead of leaving the caller with a half-run scan. Its own record is the
+    authoritative answer for Release, which reads a file by fileId instead of trusting
+    the state a client claims.
 servers:
   - url: http://localhost:8082
 paths:
@@ -112,6 +114,28 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '405': { $ref: '#/components/responses/MethodNotAllowed' }
         '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/quarantine/by-file/{fileId}:
+    get:
+      summary: Get the quarantine record for a file, addressed by Intake's id
+      description: >
+        The authoritative state of one file for another service. Release calls this before
+        granting a release, so a caller cannot get a file released by claiming it is CLEAN.
+        404 means the file was never quarantined.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: The quarantine record for this file
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuarantineResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /health:
     get:
       summary: Check service liveness
@@ -135,6 +159,14 @@ components:
       schema:
         type: string
         format: uuid
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Intake's file identifier, the only id that crosses service boundaries.
     CorrelationId:
       in: header
       name: X-Correlation-Id

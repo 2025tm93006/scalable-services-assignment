@@ -3,8 +3,13 @@ info:
   title: Release Service API
   version: 1.0.0
   description: >
-    Release verifies that a file has completed quarantine with state CLEAN and
-    records a terminal RELEASED decision. Each service owns its own database.
+    Release grants the terminal release of a file that Quarantine reports as CLEAN.
+    The caller's quarantineState is only a claim: Release reads the file's own
+    quarantine record from Quarantine over REST and refuses a release that claim
+    contradicts, so a client cannot release a file by asserting it is clean. Each
+    service owns its own database and no service reads another's.
+  x-dependencies:
+    - Quarantine GET /api/v1/quarantine/by-file/{fileId} (read-only verification)
 servers:
   - url: http://localhost:8084
 paths:
@@ -27,9 +32,13 @@ paths:
       summary: Release a clean quarantined file
       description: >
         Idempotent on fileId. A repeat request returns the original release
-        record with status 201 and never creates a second row. An unreleased
-        file is rejected unless quarantineState is exactly CLEAN and
-        quarantinedAt is present.
+        record with status 201 and never creates a second row, and it needs no
+        call to Quarantine: a finished release is answered from Release's own
+        table, so a Quarantine outage cannot unmake a file that is already out.
+        A file that has not been released is checked in two stages - first the
+        claim (quarantineState must be exactly CLEAN and quarantinedAt present),
+        then the authoritative record read from Quarantine, whose state and
+        quarantinedAt must match what was claimed.
       requestBody:
         required: true
         content:
@@ -62,13 +71,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '409':
-          description: Quarantine state is not CLEAN, or quarantinedAt is absent
+          description: >
+            The claim is not CLEAN or has no timestamp, Quarantine has no record of
+            this file, Quarantine reports a state other than CLEAN, or the claimed
+            quarantinedAt does not match the quarantine record.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '415':
           description: Request body is not JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: >
+            Quarantine did not answer within the retry budget. The release is refused
+            rather than granted on the caller's word, and repeating it later may succeed.
           content:
             application/json:
               schema:
