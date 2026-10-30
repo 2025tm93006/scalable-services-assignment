@@ -29,8 +29,9 @@ With the separate Maven settings from local setup, add `-s ../maven-settings.xml
 | `quarantine-test-environment.txt` | Quarantine test command, runtime and result summary |
 | `quarantine-persistence.txt` | A real process restart keeps the state Scanner reported, the timestamps and the unique `fileId`, so a replayed create is 409 and a replayed scan is 409 |
 | `e2e-run.txt` | `scripts/e2e.sh` driving one transaction through Intake, Quarantine, Scanner and Release with its failure cases |
+| `verification-run.txt` | `scripts/verification.py` proving the release trust boundary across three real services, including the outage and the recovery |
 | `release-unit-tests.txt` | Surefire report for BR4, replay, the primary-key race and unrelated-failure handling |
-| `release-http-tests.txt` | Surefire report for replay, 8 simultaneous releases, validation, errors and correlation |
+| `release-http-tests.txt` | Surefire report for replay, 8 simultaneous releases, validation, errors and correlation, and for the verified claim: a false `CLEAN` refused, an unreachable Quarantine answered 503, a replay that makes no call out |
 | `release-test-environment.txt` | Release test command, runtime and result summary |
 | `release-persistence.txt` | A real process restart preserves the release record and the original response |
 | `scanner-unit-tests.txt` | Surefire report for each mode, replay, the in-flight wait, the unique-key race, mode conflict and interruption |
@@ -85,13 +86,17 @@ bash scripts/e2e.sh 2>&1 | tee evidence/tests/e2e-run.txt
 `evidence/tests/e2e-run.txt` also carries the Quarantine and Scanner log lines of the
 correlated cross-service scan, which is the proof that the scan really left the process.
 
-The two engineering-challenge scripts need no running services; they start and stop
-their own JARs:
+The engineering-challenge and trust-boundary scripts need no running services; they start
+and stop their own JARs:
 
 ```bash
 python3 scripts/concurrency.py 2>&1 | tee evidence/challenge-1-concurrency/run.txt
+python3 scripts/reclaim.py 2>&1 | tee evidence/challenge-1-concurrency/reclaim-run.txt
 python3 scripts/resilience.py 2>&1 | tee evidence/challenge-3a-resilience/run.txt
+python3 scripts/verification.py 2>&1 | tee evidence/tests/verification-run.txt
 ```
 
-Both exit non-zero if any asserted invariant breaks, so the captured file is a test
-result and not a transcript.
+All of them exit non-zero if any asserted invariant breaks, so the captured file is a test
+result and not a transcript. `verification.py` is the one that is not a challenge: it
+proves Release verifies a quarantine state instead of accepting the caller's claim, and
+that a state it cannot check is refused with 503 rather than released.

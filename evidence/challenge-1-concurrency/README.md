@@ -19,6 +19,7 @@ Two contended resources are exercised in one run:
 ```bash
 mvn -pl quarantine-service,scanner-service -am package
 python3 scripts/concurrency.py 2>&1 | tee evidence/challenge-1-concurrency/run.txt
+python3 scripts/reclaim.py 2>&1 | tee evidence/challenge-1-concurrency/reclaim-run.txt
 ```
 
 The script starts Scanner and Quarantine itself on free ports against temporary
@@ -42,6 +43,27 @@ timings.
 | Rejections delay work instead of losing it | `run.txt`: the 18 refused files are scanned afterwards, one by one, and `PART_3_FINALLY` shows `CLEAN: 20` |
 | Retries and rejections do not create duplicate scans | `run.txt`: `SCANNER_SCAN_COMPLETED_TOTAL 20 for 20 files` in the Scanner log |
 | State is consistent afterwards | `run.txt`: final summary `total=21` = 20 scanned files + 1 never-scanned record from Part 1 |
+
+## The crash case: the ledger has to survive a killed process
+
+A scan releases its slot in a `finally` block, and `finally` does not run when the JVM is
+`SIGKILL`ed. Without help the database keeps one `HELD` slot and one `SCANNING` record
+forever - capacity shrinking by one per crash, and a file with no verdict. `reclaim.py`
+kills a scan mid-call on purpose and reads the same temporary database back through three
+starts of Quarantine:
+
+| Claim | Artifact and observation |
+|---|---|
+| A live scan really does hold a slot | `reclaim-run.txt`: `DURING_THE_SCAN` shows `"SCANNING": 1` and `scannerSlots {"HELD": 1}` |
+| The leak is in the database, not in memory | `reclaim-run.txt`: `AFTER_RESTART_SWEEP_DISABLED` reads the same `HELD 1 / SCANNING 1` after a restart with the sweep switched off |
+| One sweep restores both | `reclaim-run.txt`: `AFTER_RECLAIM_SWEEP` shows `"HELD": 0`, `"SCANNING": 0`, `"FAILED": 1` and `scan_reclaim slotsFreed=1 recordsFailed=1` |
+| Settling an abandoned scan is not a second transition | `reclaim-run.txt`: the record goes `SCANNING → FAILED` once, and a later re-scan is `409 File has already been scanned` |
+| Capacity is usable again | `reclaim-run.txt`: `CAPACITY_USABLE_AFTER_THE_SWEEP` scans a new file on the reclaimed slot in tens of milliseconds |
+| The age must respect the retry budget | `reclaim-run.txt`: `RECLAIM_LOG` carries `scan_reclaim_age_below_budget staleMillis=1500 retryBudgetMillis=30000` - the guard warns on this deliberately aggressive demo config |
+
+A still-running scan is protected twice over: the cutoff must be older than the whole
+retry budget, and a `SCANNING` record whose slot is still held is skipped. Both branches
+are unit-tested in `ScanReclaimJobTest`.
 
 ## Why a plain check-then-update in application code would fail
 
@@ -70,6 +92,11 @@ pointed at the same database share one capacity, and the state survives a restar
 fires the same burst against an embedded application with capacity 2 and asserts that
 the stub Scanner service never observed more than two calls at the same instant, and
 that every slot was released afterwards.
+
+`ScanReclaimJobTest` covers the crash sweep in isolation: a stale slot is freed, a recent
+one is left, an abandoned `SCANNING` record settles once, a record whose slot is still
+held is skipped, a settled record is never reopened, and running the sweep twice changes
+nothing the second time.
 
 `evidence/tests/quarantine-http-tests.txt` and
 `evidence/tests/quarantine-unit-tests.txt` hold the current test output.

@@ -6,12 +6,15 @@ Intake accepts metadata and deduplicates repeated intake requests. Quarantine
 records a file, holds one scanner capacity slot while it asks Scanner over REST to
 inspect the file, and moves it through its scan states; it refuses a second quarantine
 or a second scan. Scanner returns deterministic mock results and replays a stored
-result for a repeated or retried file. Release verifies clean quarantine state and
-records the release decision.
+result for a repeated or retried file. Release grants the terminal release of a file,
+and verifies the state at Quarantine instead of accepting the caller's claim.
 
-Quarantine calling Scanner is the one service-to-service dependency. It carries a
-connect and read timeout, a bounded number of attempts and exponential backoff with
-jitter, and it fails gracefully by settling the file as `FAILED`. See
+Two edges go between services, each with a connect and read timeout, a bounded number
+of attempts and exponential backoff with jitter. Quarantine calling Scanner is the one
+Challenge 3A is about: a slow or stopped Scanner settles the file `FAILED` gracefully,
+and an optional circuit breaker stops calling a dependency that is known to be down.
+Release calling Quarantine is a read-only verification, and a state that cannot be
+checked is answered 503 rather than released on trust. See
 [docs/architecture.md](docs/architecture.md) for the diagrams and
 [docs/business-rules.md](docs/business-rules.md) for where each rule is enforced.
 
@@ -26,8 +29,8 @@ Spring Boot 3.3.5 ships. All database credentials here are local demonstration v
 ## Build and run
 
 From this folder, run `mvn clean package`. Every service includes unit and
-HTTP/database tests (131 tests in total: Intake 36, Quarantine 28, Scanner 34,
-Release 33).
+HTTP/database tests (169 tests in total: Intake 36, Quarantine 47, Scanner 34,
+Release 52).
 Run each command in a separate terminal after packaging:
 
 ```bash
@@ -40,13 +43,15 @@ java -jar release-service/target/release-service-1.0.0-SNAPSHOT.jar
 | Service | Responsibility planned | Default port |
 |---|---|---|
 | Intake | Accept metadata and deduplicate intake requests | 8081 |
-| Quarantine | Own quarantine states and scanner capacity, call Scanner | 8082 |
+| Quarantine | Own quarantine states and scanner capacity, call Scanner, answer for a file | 8082 |
 | Scanner | Simulate clean, infected, slow and failed scans | 8083 |
-| Release | Verify quarantine state and permit clean release | 8084 |
+| Release | Verify the state at its owner and permit a clean release | 8084 |
 
-The table is in port order; the commands above start Scanner before Quarantine, because
-a scan needs it. Quarantine itself starts fine without it and then settles any scan as
-`FAILED` once its retry budget runs out.
+The table is in port order; the commands above start each service after the one it
+calls. Quarantine starts fine without Scanner and settles a scan `FAILED` once its retry
+budget runs out; Release starts fine without Quarantine and answers 503 until it can
+verify - except for a file that is already released, which replays from Release's own
+table with no call out at all.
 
 With all services running, run `bash scripts/health.sh` and then
 `bash scripts/e2e.sh`, which drives one transaction through all four services and
@@ -61,17 +66,20 @@ the repository root so it uses the same relative database path every time.
 `scripts/persistence.py`, `scripts/quarantine-persistence.py`,
 `scripts/scanner-persistence.py` and `scripts/release-persistence.py` prove that
 durability by restarting each service against a temporary file database.
-`scripts/concurrency.py` and `scripts/resilience.py` are the Challenge 1 and Challenge
-3A checks: each starts its own packaged JARs on ephemeral ports, fires the parallel or
-the failing requests, asserts the invariants and exits non-zero on any broken one, with
-the captured output in `evidence/challenge-1-concurrency/` and
-`evidence/challenge-3a-resilience/`.
+`scripts/concurrency.py`, `scripts/reclaim.py` and `scripts/resilience.py` are the
+Challenge 1 and Challenge 3A checks, and `scripts/verification.py` drives the
+release-verification boundary: each starts its own packaged JARs on ephemeral ports,
+fires the parallel, failing or lying requests, asserts the invariants and exits non-zero
+on any broken one, with the captured output in `evidence/challenge-1-concurrency/`,
+`evidence/challenge-3a-resilience/` and `evidence/tests/`.
 Each service runs its own tests against a separate in-memory database, so the
 test suite never writes into `data/`.
 Each service has its own database URL and credentials. For overrides, export SERVER_PORT, DB_URL,
 DB_USERNAME, DB_PASSWORD, DB_DRIVER and DDL_AUTO in that service's terminal;
-see its `.env.example`. Quarantine additionally reads `MAX_CONCURRENT_SCANS` and the
-`SCANNER_*` timeout, retry and base-URL variables. These files are examples and are not
+see its `.env.example`. Quarantine additionally reads `MAX_CONCURRENT_SCANS`, the
+`SCANNER_*` timeout, retry, circuit-breaker and base-URL variables, and the
+`QUARANTINE_RECLAIM_*` sweep settings; Release reads `QUARANTINE_BASE_URL` and the
+`QUARANTINE_*` verification budget. These files are examples and are not
 loaded automatically.
 
 ## Layout
