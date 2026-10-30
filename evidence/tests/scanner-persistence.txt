@@ -1,9 +1,9 @@
-TIMESTAMP 2026-10-25T18:33:06.222108+00:00
+TIMESTAMP 2026-10-30T04:46:22.504421+00:00
 COMMAND python3 scripts/scanner-persistence.py
 DATABASE isolated temporary file-based H2; existing application data is untouched
-BEFORE_RESTART 200 {"completedAt": "2026-10-25T18:33:10.142Z", "fileId": "b156e706-8dfd-4ea2-8d4b-5b9039819b66", "message": "Deterministic mock result", "result": "INFECTED"}
+BEFORE_RESTART 200 {"completedAt": "2026-10-30T04:46:24.500Z", "fileId": "9b911189-7b38-445a-9619-3b0b741ceaf1", "message": "Deterministic mock result", "result": "INFECTED"}
 FIRST_PROCESS_STOPPED DATABASE_FILE_EXISTS true
-AFTER_RESTART_REPLAY 200 {"completedAt": "2026-10-25T18:33:10.142Z", "fileId": "b156e706-8dfd-4ea2-8d4b-5b9039819b66", "message": "Deterministic mock result", "result": "INFECTED"}
-AFTER_RESTART_GET 200 {"fileId": "b156e706-8dfd-4ea2-8d4b-5b9039819b66", "finishedAt": "2026-10-25T18:33:10.142Z", "mode": "INFECTED", "result": "INFECTED", "startedAt": "2026-10-25T18:33:10.107Z"}
+AFTER_RESTART_REPLAY 200 {"completedAt": "2026-10-30T04:46:24.500Z", "fileId": "9b911189-7b38-445a-9619-3b0b741ceaf1", "message": "Deterministic mock result", "result": "INFECTED"}
+AFTER_RESTART_GET 200 {"fileId": "9b911189-7b38-445a-9619-3b0b741ceaf1", "finishedAt": "2026-10-30T04:46:24.500Z", "mode": "INFECTED", "result": "INFECTED", "startedAt": "2026-10-30T04:46:24.483Z"}
 AFTER_RESTART_EVIDENCE {"attemptsByResult": {"CLEAN": 0, "FAILED": 0, "INFECTED": 1, "IN_PROGRESS": 0}, "totalAttempts": 1}
 SCANNER_PERSISTENCE_PASS

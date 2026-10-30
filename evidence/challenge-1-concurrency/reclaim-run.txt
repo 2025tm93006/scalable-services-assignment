@@ -1,6 +1,6 @@
 COMMAND python3 scripts/reclaim.py
-TIMESTAMP 2026-10-30T04:08:00.500259+00:00
-CORRELATION_ID reclaim-d64b02fe-5aa3-4643-bfb0-2a3529b19124
+TIMESTAMP 2026-10-30T04:45:27.401556+00:00
+CORRELATION_ID reclaim-f2bcf515-a794-4218-9c41-5558badb0f23
 CONFIG capacity=1 scannerSlowMillis=8000 readTimeoutMillis=30000 maxAttempts=1 slotStaleMillis=1500 sweepIntervalMillis=400
 DURING_THE_SCAN {"byState": {"CLEAN": 0, "FAILED": 0, "INFECTED": 0, "QUARANTINED": 0, "SCANNING": 1}, "capacity": 1, "scannerSlots": {"FREE": 0, "HELD": 1}, "total": 1}
 KILLING_QUARANTINE_MID_SCAN heldSlots=1 scanningRecords=1
@@ -22,11 +22,11 @@ RECLAIM_CONSISTENCY
   PASS the reclaimed record is still final: 409 File has already been scanned
 
 CAPACITY_USABLE_AFTER_THE_SWEEP
-  PASS a new scan runs on the reclaimed slot: status=200 49 ms
+  PASS a new scan runs on the reclaimed slot: status=200 50 ms
 
 RECLAIM_LOG
   c.b.secure.quarantine.ScanReclaimJob - scan_reclaim_age_below_budget staleMillis=1500 retryBudgetMillis=30000 a scan that is still running could have its slot taken away
-  c.b.secure.quarantine.ScanReclaimJob - scan_reclaim_settled fileId=17b87e53-8560-4561-a38a-aceef465fdfa recordId=c3fb93e0-f2dc-48e7-81c5-cf13db5e4d7d from=SCANNING to=FAILED
+  c.b.secure.quarantine.ScanReclaimJob - scan_reclaim_settled fileId=9415acc0-3f7c-45e2-92e8-49663f58fb81 recordId=7d9b7329-66a4-4e93-99eb-f6de93fdc8d4 from=SCANNING to=FAILED
   c.b.secure.quarantine.ScanReclaimJob - scan_reclaim slotsFreed=1 recordsFailed=1 staleMillis=1500
   PASS the sweep logged both the settle and the summary
   PASS the job warns that this demo age is below the retry budget: c.b.secure.quarantine.ScanReclaimJob - scan_reclaim_age_below_budget staleMillis=1500 retryBudgetMillis=30000 a scan that is still running could have its slot taken away

@@ -1,8 +1,16 @@
 -------------------------------------------------------------------------------
 Test set: com.bits.secure.quarantine.QuarantineServiceTest
 -------------------------------------------------------------------------------
-Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.137 s -- in com.bits.secure.quarantine.QuarantineServiceTest
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.157 s -- in com.bits.secure.quarantine.QuarantineServiceTest
 -------------------------------------------------------------------------------
 Test set: com.bits.secure.quarantine.ScannerClientTest
 -------------------------------------------------------------------------------
-Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.026 s -- in com.bits.secure.quarantine.ScannerClientTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.027 s -- in com.bits.secure.quarantine.ScannerClientTest
+-------------------------------------------------------------------------------
+Test set: com.bits.secure.quarantine.ScannerCircuitBreakerTest
+-------------------------------------------------------------------------------
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.bits.secure.quarantine.ScannerCircuitBreakerTest
+-------------------------------------------------------------------------------
+Test set: com.bits.secure.quarantine.ScanReclaimJobTest
+-------------------------------------------------------------------------------
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.193 s -- in com.bits.secure.quarantine.ScanReclaimJobTest

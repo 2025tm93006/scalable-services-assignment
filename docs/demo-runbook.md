@@ -29,8 +29,8 @@ export JAVA_HOME=$(/usr/libexec/java_home)   # macOS; on Linux use your JDK path
 mvn -B -ntp clean package
 ```
 
-Expect `BUILD SUCCESS` for all five reactor modules and 169 tests
-(Intake 36, Quarantine 47, Scanner 34, Release 52).
+Expect `BUILD SUCCESS` for all five reactor modules and 171 tests
+(Intake 36, Quarantine 47, Scanner 34, Release 54).
 
 Start with a clean slate so the counts on screen are only from this run:
 

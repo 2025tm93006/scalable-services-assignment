@@ -1,17 +1,17 @@
 COMMAND python3 scripts/concurrency.py
-TIMESTAMP 2026-10-26T13:50:09.716388+00:00
-CORRELATION_ID challenge1-9d37702a-a9c9-4610-99e3-99f262deb642
+TIMESTAMP 2026-10-30T04:44:43.607215+00:00
+CORRELATION_ID challenge1-207ae0b9-9863-4343-a949-cc4db0943eda
 CONFIG capacity=2 scannerDelayMillis=2000 creationContenders=8 scanContenders=20
 CAPACITY_BEFORE {"FREE": 2, "HELD": 0} declaredCapacity=2
 
-PART_1_SIMULTANEOUS_CREATIONS fileId=9d6466bb-1f97-438f-a3ab-11fc40e3c9ce
+PART_1_SIMULTANEOUS_CREATIONS fileId=70063d02-0990-400c-9352-3fea662be91c
 PARALLEL_REQUESTS 8 ELAPSED_MILLIS 61
   RESULT count=7 status=409 message=File is already quarantined
   RESULT count=1 status=201 message=None
 PART_1_DATABASE total=1 QUARANTINED=1
 
 PART_2_PARALLEL_SCANS capacity=2 files=20
-PARALLEL_REQUESTS 20 ELAPSED_MILLIS 2198
+PARALLEL_REQUESTS 20 ELAPSED_MILLIS 2242
   RESULT count=18 status=409 message=Scanner capacity exhausted
   RESULT count=2 status=200 message=None
 PART_3_AFTER_BURST {"byState": {"CLEAN": 2, "FAILED": 0, "INFECTED": 0, "QUARANTINED": 19, "SCANNING": 0}, "capacity": 2, "scannerSlots": {"FREE": 2, "HELD": 0}, "total": 21}
@@ -19,48 +19,48 @@ PART_3_BURST_ACCEPTED 2 REJECTED 18
 PART_3_FINALLY {"byState": {"CLEAN": 20, "FAILED": 0, "INFECTED": 0, "QUARANTINED": 1, "SCANNING": 0}, "capacity": 2, "scannerSlots": {"FREE": 2, "HELD": 0}, "total": 21}
 
 QUARANTINE_LOG_EVIDENCE slot claims and rejections
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=c16a0685-144b-4c48-bc86-37b199fcae7f slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=5a768467-485f-4b75-946b-ef26947c6a7b slot=2 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=a4e9a658-7d2c-4962-8dd4-084e0cdcc6b0 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=64a4b32c-cd27-4c10-9a92-a9166d034b45 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=38a2e371-8093-4bb3-8790-f500ccfc76b3 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=88873a17-52b8-4c3c-833a-700a9f0e518c capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=37e4959a-e4e3-4174-b306-9e9d32b084b9 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=e5713eab-2526-40b5-8cbe-37cd85db6cac capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=a6f2872e-15dd-42e2-961c-d83772d58f19 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=64a6052f-3c42-4337-96ee-efabd13e6c63 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=382db2d7-74c0-41b5-95b5-752b2548a9dc capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=f295a521-0884-4a94-bdff-0ce9652b5db9 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=bebbc4c9-799c-4b81-b3f0-776b0ccb9177 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=313967b7-be9f-4b37-af9b-8c4450585c16 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=6cb9d2ec-2571-45bb-a3bf-e99dae6539df capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=90ad7bd2-1566-4b12-b690-4477a5906836 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=e12aadf3-e0e7-41e0-a988-16ed543cce96 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=ecaf253a-edc4-4e31-a2df-f80ee8c5b3c7 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=1b0008b6-1c74-4b01-8ea9-9c42896e3d5a capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=a08680d0-f3dc-42b4-9ae5-7b61f2442214 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=a6f2872e-15dd-42e2-961c-d83772d58f19 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=64a6052f-3c42-4337-96ee-efabd13e6c63 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=e5713eab-2526-40b5-8cbe-37cd85db6cac slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=ecaf253a-edc4-4e31-a2df-f80ee8c5b3c7 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=313967b7-be9f-4b37-af9b-8c4450585c16 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=a08680d0-f3dc-42b4-9ae5-7b61f2442214 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=bebbc4c9-799c-4b81-b3f0-776b0ccb9177 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=6cb9d2ec-2571-45bb-a3bf-e99dae6539df slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=1b0008b6-1c74-4b01-8ea9-9c42896e3d5a slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=382db2d7-74c0-41b5-95b5-752b2548a9dc slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=64a4b32c-cd27-4c10-9a92-a9166d034b45 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=37e4959a-e4e3-4174-b306-9e9d32b084b9 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=38a2e371-8093-4bb3-8790-f500ccfc76b3 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=f295a521-0884-4a94-bdff-0ce9652b5db9 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=e12aadf3-e0e7-41e0-a988-16ed543cce96 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=a4e9a658-7d2c-4962-8dd4-084e0cdcc6b0 slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=88873a17-52b8-4c3c-833a-700a9f0e518c slot=1 capacity=2
-  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=90ad7bd2-1566-4b12-b690-4477a5906836 slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=172be625-08d4-4e75-a910-18f0cc4edf9a slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=e50fb919-e548-46aa-ad0c-d073b6c74198 slot=2 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=2a5ee117-f3ca-4132-bdf3-6ddfd5089b01 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=35978a5d-8abf-4e55-8ea3-3809b8e1ab65 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=17ddec4b-a9d8-4e08-a2cd-f541f5f2f55e capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=1d0e6487-9db5-4c40-841b-fd6687fbca1b capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=c80ffe4e-8082-43b8-a939-4a336790c9ec capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=29ef38a6-026e-4897-abf0-51c9efcaf26e capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=6122b1bd-4f62-483a-bbd3-9325002df316 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=421aaaac-c5b7-49bf-abbd-04a9f17ea22d capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=58d81a00-0eb6-467c-9544-311262c31d6d capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=75b60122-1483-42ae-9b84-5b1d6f1c52fa capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=ccf1fa4d-dab5-4fb0-bee2-36b448572250 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=ef9d61ea-7d4f-4a64-9a06-409db14c92e5 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=03e05f58-3433-4fe6-90fd-b7bed07874aa capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=c15438cd-1137-4f75-9631-ed4637f858de capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=50407d1b-65b5-48f8-b31b-55d0efb234da capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=7b295822-606a-4079-8dac-6073d0c9aefe capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=eb182932-7bd8-4dab-9f4b-e27eac123b2f capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_capacity_rejected fileId=58646fb3-1808-42fb-bed5-9415f777cd11 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=58646fb3-1808-42fb-bed5-9415f777cd11 slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=35978a5d-8abf-4e55-8ea3-3809b8e1ab65 slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=50407d1b-65b5-48f8-b31b-55d0efb234da slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=c15438cd-1137-4f75-9631-ed4637f858de slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=6122b1bd-4f62-483a-bbd3-9325002df316 slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=ef9d61ea-7d4f-4a64-9a06-409db14c92e5 slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=1d0e6487-9db5-4c40-841b-fd6687fbca1b slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=c80ffe4e-8082-43b8-a939-4a336790c9ec slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=ccf1fa4d-dab5-4fb0-bee2-36b448572250 slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=2a5ee117-f3ca-4132-bdf3-6ddfd5089b01 slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=421aaaac-c5b7-49bf-abbd-04a9f17ea22d slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=7b295822-606a-4079-8dac-6073d0c9aefe slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=75b60122-1483-42ae-9b84-5b1d6f1c52fa slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=03e05f58-3433-4fe6-90fd-b7bed07874aa slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=17ddec4b-a9d8-4e08-a2cd-f541f5f2f55e slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=29ef38a6-026e-4897-abf0-51c9efcaf26e slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=eb182932-7bd8-4dab-9f4b-e27eac123b2f slot=1 capacity=2
+  c.b.s.quarantine.ScanCapacityService - scanner_slot_acquired fileId=58d81a00-0eb6-467c-9544-311262c31d6d slot=1 capacity=2
 SCANNER_LOG_EVIDENCE one scan_completed per file, no duplicate scans
-  c.bits.secure.scanner.ScannerService - scan_completed fileId=5a768467-485f-4b75-946b-ef26947c6a7b mode=SLOW result=CLEAN durationMillis=2025
-  c.bits.secure.scanner.ScannerService - scan_completed fileId=c16a0685-144b-4c48-bc86-37b199fcae7f mode=SLOW result=CLEAN durationMillis=2025
-  c.bits.secure.scanner.ScannerService - scan_completed fileId=a6f2872e-15dd-42e2-961c-d83772d58f19 mode=SLOW result=CLEAN durationMillis=2006
+  c.bits.secure.scanner.ScannerService - scan_completed fileId=172be625-08d4-4e75-a910-18f0cc4edf9a mode=SLOW result=CLEAN durationMillis=2023
+  c.bits.secure.scanner.ScannerService - scan_completed fileId=e50fb919-e548-46aa-ad0c-d073b6c74198 mode=SLOW result=CLEAN durationMillis=2024
+  c.bits.secure.scanner.ScannerService - scan_completed fileId=58646fb3-1808-42fb-bed5-9415f777cd11 mode=SLOW result=CLEAN durationMillis=2004
   SCANNER_SCAN_COMPLETED_TOTAL 20 for 20 files
 
 CHALLENGE_1_PASS exactly 2 of 20 scans ran at a time and one record existed per file

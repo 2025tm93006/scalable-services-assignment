@@ -183,7 +183,7 @@ component scan - answering the verification read on that same socket, so the 409
 replay-without-calling-out paths are exercised over HTTP. It covers replay, 8 simultaneous
 requests, validation, 400/404/405/409/415/503 errors, the shared error model, correlation
 IDs and health. `QuarantineClientTest` covers the retry curve and how a failed read is
-reported. Release now runs 52 tests in total; Surefire reports are written to
+reported. Release now runs 54 tests in total; Surefire reports are written to
 `release-service/target/surefire-reports/`.
 
 Cross-process, with three real services on their own ports and temporary databases:
