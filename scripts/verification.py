@@ -27,6 +27,21 @@ from datetime import datetime, timezone
 
 import services
 
+# ── terminal colors ───────────────────────────────────────────────────────────
+GREEN  = '\033[0;32m'; RED    = '\033[0;31m'; CYAN  = '\033[0;36m'
+YELLOW = '\033[1;33m'; BOLD   = '\033[1m';    DIM   = '\033[2m'; RESET = '\033[0m'
+
+def banner(title):
+    width = 60
+    print(f"\n{BOLD}{CYAN}{'═' * width}{RESET}")
+    print(f"{BOLD}{CYAN}  {title}{RESET}")
+    print(f"{BOLD}{CYAN}{'═' * width}{RESET}\n")
+
+def section(title):
+    print(f"\n{CYAN}{BOLD}── {title} ──{RESET}")
+
+def info(msg): print(f"  {DIM}{msg}{RESET}", flush=True)
+
 ATTEMPTS = 3
 CORRELATION = 'verification-' + str(uuid.uuid4())
 
@@ -34,8 +49,10 @@ failures = []
 
 
 def check(condition, description, detail=None):
-    print(f"  {'PASS' if condition else 'FAIL'} {description}"
-          + ('' if detail is None else f': {detail}'), flush=True)
+    color = GREEN if condition else RED
+    mark  = '✔' if condition else '✘'
+    print(f"  {color}{mark}{RESET}  {description}"
+          + ('' if detail is None else f'  {DIM}{detail}{RESET}'), flush=True)
     if not condition:
         failures.append(description)
 
@@ -76,11 +93,10 @@ def main():
     services.require(services.RELEASE_JAR)
     java = services.java_executable()
 
-    print('COMMAND python3 scripts/verification.py', flush=True)
-    print('TIMESTAMP', datetime.now(timezone.utc).isoformat(), flush=True)
-    print('CORRELATION_ID', CORRELATION, flush=True)
-    print(f'CONFIG releaseVerificationMaxAttempts={ATTEMPTS} '
-          'quarantineReadTimeoutMillis=1000 quarantineRetryBaseMillis=100', flush=True)
+    banner("Release Trust Boundary — Verification Suite")
+    info(f"releaseVerificationMaxAttempts={ATTEMPTS}  quarantineReadTimeout=1000 ms")
+    info(f"correlationId={CORRELATION}")
+    info(f"timestamp={datetime.now(timezone.utc).isoformat()}")
 
     with tempfile.TemporaryDirectory(prefix='verification-') as folder:
         directory = Path(folder)
@@ -125,16 +141,15 @@ def main():
             release_process = start_release('1')
 
             # --- A: the honest case still works, and the check is visible in the log ---
-            print('\nPART_A_VERIFIED_RELEASE clean_file_releases_against_the_owners_record', flush=True)
+            section("Part A — Verified release: clean file releases against the owner's record")
             record_id, file_id = quarantine_file(quarantine, 'CLEAN')
             settled = scan(quarantine, record_id)
             quarantined_at = verified_timestamp(quarantine, file_id)
-            print(f'  QUARANTINE state={settled["state"]}', flush=True)
+            info(f"Quarantine state={settled['state']}")
             status, released = call(release_base, 'POST', '/api/v1/releases',
                                     {'fileId': file_id, 'quarantineState': 'CLEAN',
                                      'quarantinedAt': quarantined_at})
-            print(f'  RESPONSE status={status} body={json.dumps(released, sort_keys=True)}',
-                  flush=True)
+            info(f"status={status}  {json.dumps(released, sort_keys=True)}")
             check(status == 201 and released['state'] == 'RELEASED',
                   'a file Quarantine reports CLEAN is released')
             read_status, read = call(release_base, 'GET', f'/api/v1/releases/{file_id}')
@@ -145,13 +160,13 @@ def main():
                   verified_lines[-1] if verified_lines else 'no line')
 
             # --- B: the claim is only a claim ---
-            print('\nPART_B_LIZING_CLIENT claiming_CLEAN_for_an_infected_file_is_refused', flush=True)
+            section("Part B — Lying client: claiming CLEAN for infected/missing/wrong-time is refused")
             infected_record, infected_file = quarantine_file(quarantine, 'INFECTED')
             infected_state = scan(quarantine, infected_record)['state']
             infected_at = verified_timestamp(quarantine, infected_file)
-            print(f'  QUARANTINE state={infected_state}', flush=True)
+            info(f"Quarantine state={infected_state}")
             status, refusal = release(release_base, infected_file, 'CLEAN', infected_at)
-            print(f'  RESPONSE status={status} message={refusal.get("message")}', flush=True)
+            info(f"status={status}  message={refusal.get('message')}")
             check(status == 409, 'the release is refused even though the caller said CLEAN')
             check('INFECTED' in str(refusal.get('message')),
                   'and the refusal names what Quarantine actually reported',
@@ -172,7 +187,7 @@ def main():
                   stale.get('message'))
 
             # --- C: cannot check, so cannot release ---
-            print('\nPART_C_QUARANTINE_DOWN no_check_no_release', flush=True)
+            section("Part C — Quarantine down: no check → no release (503, nothing stored)")
             waiting_record, waiting_file = quarantine_file(quarantine, 'CLEAN')
             check(scan(quarantine, waiting_record)['state'] == 'CLEAN',
                   'this file really is clean and releasable')
@@ -188,8 +203,7 @@ def main():
             started = time.monotonic()
             status, unavailable = release(release_base, waiting_file, 'CLEAN', waiting_at)
             elapsed = int((time.monotonic() - started) * 1000)
-            print(f'  RESPONSE status={status} message={unavailable.get("message")} '
-                  f'elapsedMillis={elapsed}', flush=True)
+            info(f"status={status}  message={unavailable.get('message')}  elapsed={elapsed} ms")
             check(status == 503, 'the release is refused with 503, not granted on the claim')
             check('Quarantine did not answer' in str(unavailable.get('message')),
                   'and the answer says why', unavailable.get('message'))
@@ -200,7 +214,7 @@ def main():
                   f'the whole budget of {ATTEMPTS} attempts was spent on a read that is '
                   f'safe to repeat', f'{len(attempts)} lines')
             for line in attempts:
-                print('  RELEASE_LOG ' + line, flush=True)
+                info("RELEASE LOG  " + line)
             refused_writes = [line for line in services.lines(release_log, 'dependency_unavailable')
                               if '/api/v1/releases' in line]
             check(len(refused_writes) >= 1,
@@ -209,15 +223,16 @@ def main():
             check(not any('release_rejected' in line and waiting_file in line
                           for line in services.lines(release_log, 'release_rejected')),
                   'an unchecked release is never reported as a policy rejection')
+            for line in refused_writes[:1]:
+                info("RELEASE LOG  " + line)
 
             # --- D: the outage delays a release, it does not lose it ---
-            print('\nPART_D_DEPENDENCY_BACK release_proceeds', flush=True)
+            section("Part D — Quarantine back: delayed release proceeds, replay works offline")
             status, health = call(release_base, 'GET', '/health')
             check(status == 200 and health['status'] == 'UP', 'Release stayed up throughout')
             quarantine_process = start_quarantine('2')
             status, recovered = release(release_base, waiting_file, 'CLEAN', waiting_at)
-            print(f'  RESPONSE status={status} body={json.dumps(recovered, sort_keys=True)}',
-                  flush=True)
+            info(f"status={status}  {json.dumps(recovered, sort_keys=True)}")
             check(status == 201 and recovered['state'] == 'RELEASED',
                   'the same request succeeds once Quarantine answers again')
 
@@ -235,23 +250,26 @@ def main():
                     f'quarantine_read fileId={waiting_file}')) == reads_after_the_release,
                   'the replay asked Quarantine nothing new')
 
-            print('\nRELEASE_LOG the verification, the refusals and the outage', flush=True)
+            section("Release log — verification, refusals, outage trail")
             for line in services.lines(release_log, 'release_verified', 'release_rejected',
                                         'release_replay', 'dependency_unavailable')[-8:]:
-                print('  ' + line, flush=True)
+                info(line)
         finally:
             services.stop(release_process)
             services.stop(quarantine_process)
             services.stop(scanner_process)
 
     if failures:
-        print(f'\nVERIFICATION_FAIL {len(failures)} checks did not hold', file=sys.stderr, flush=True)
+        print(f"\n{RED}{BOLD}╔{'═'*58}╗{RESET}", file=sys.stderr)
+        print(f"{RED}{BOLD}║  VERIFICATION_FAIL — {len(failures)} checks did not hold{' '*(35-len(str(len(failures))))}║{RESET}", file=sys.stderr)
+        print(f"{RED}{BOLD}╚{'═'*58}╝{RESET}", file=sys.stderr)
         for description in failures:
-            print('  ' + description, file=sys.stderr, flush=True)
+            print(f"  {RED}✘{RESET}  {description}", file=sys.stderr, flush=True)
         return 1
-    print('\nVERIFICATION_PASS Release answers to Quarantine, not to the caller: a claimed '
-          'CLEAN that Quarantine denies is refused, and a state that cannot be checked is '
-          'not released', flush=True)
+    print(f"\n{GREEN}{BOLD}╔{'═'*58}╗{RESET}")
+    print(f"{GREEN}{BOLD}║  VERIFICATION_PASS{' '*39}║{RESET}")
+    print(f"{GREEN}{BOLD}║  Release answers to Quarantine, not to the caller{' '*8}║{RESET}")
+    print(f"{GREEN}{BOLD}╚{'═'*58}╝{RESET}\n", flush=True)
     return 0
 
 

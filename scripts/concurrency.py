@@ -23,6 +23,23 @@ from datetime import datetime, timezone
 
 import services
 
+# ── terminal colors ───────────────────────────────────────────────────────────
+GREEN  = '\033[0;32m'; RED    = '\033[0;31m'; CYAN  = '\033[0;36m'
+YELLOW = '\033[1;33m'; BOLD   = '\033[1m';    DIM   = '\033[2m'; RESET = '\033[0m'
+
+def banner(title):
+    width = 60
+    print(f"\n{BOLD}{CYAN}{'═' * width}{RESET}")
+    print(f"{BOLD}{CYAN}  {title}{RESET}")
+    print(f"{BOLD}{CYAN}{'═' * width}{RESET}\n")
+
+def section(title):
+    print(f"\n{CYAN}{BOLD}── {title} ──{RESET}")
+
+def ok(msg):   print(f"  {GREEN}✔{RESET}  {msg}")
+def fail_msg(msg): print(f"  {RED}✘{RESET}  {RED}{msg}{RESET}")
+def info(msg): print(f"  {DIM}{msg}{RESET}")
+
 CREATION_CONTENDERS = 8
 SCAN_CONTENDERS = 20
 CAPACITY = 2
@@ -66,9 +83,10 @@ def tally(results):
 
 
 def report(results, elapsed, expected):
-    print(f'PARALLEL_REQUESTS {len(results)} ELAPSED_MILLIS {int(elapsed * 1000)}', flush=True)
+    print(f"  {BOLD}Parallel requests: {len(results)}  elapsed: {int(elapsed * 1000)} ms{RESET}", flush=True)
     for (status, message), count in sorted(tally(results).items(), key=lambda item: -item[1]):
-        print(f'  RESULT count={count} status={status} message={message}', flush=True)
+        color = GREEN if status < 400 else YELLOW if status == 409 else RED
+        print(f"    {color}HTTP {status}{RESET}  ×{count}  {DIM}{message or ''}{RESET}", flush=True)
     for status, message, count in expected:
         actual = tally(results).get((status, message), 0)
         assert actual == count, f'expected {count} responses {status}/{message}, saw {actual}'
@@ -81,11 +99,11 @@ def main():
     services.require(services.SCANNER_JAR)
     java = services.java_executable()
 
-    print('COMMAND python3 scripts/concurrency.py', flush=True)
-    print('TIMESTAMP', datetime.now(timezone.utc).isoformat(), flush=True)
-    print(f'CORRELATION_ID {CORRELATION}', flush=True)
-    print(f'CONFIG capacity={CAPACITY} scannerDelayMillis={SCANNER_SLOW_MILLIS} '
-          f'creationContenders={CREATION_CONTENDERS} scanContenders={SCAN_CONTENDERS}', flush=True)
+    banner("CHALLENGE 1 — Concurrency Control")
+    info(f"capacity={CAPACITY}  scanner delay={SCANNER_SLOW_MILLIS} ms")
+    info(f"creation contenders={CREATION_CONTENDERS}  scan contenders={SCAN_CONTENDERS}")
+    info(f"correlationId={CORRELATION}")
+    info(f"timestamp={datetime.now(timezone.utc).isoformat()}")
 
     with tempfile.TemporaryDirectory(prefix='challenge1-') as folder:
         directory = Path(folder)
@@ -107,25 +125,25 @@ def main():
                 'scanner.base-url': scanner_base}, quarantine_log)
 
             _, before = call(quarantine_base, 'GET', '/api/v1/quarantine/_evidence/summary')
-            print('CAPACITY_BEFORE', json.dumps(before['scannerSlots'], sort_keys=True),
-                  f"declaredCapacity={before['capacity']}", flush=True)
+            slots = before['scannerSlots']
+            info(f"capacity={before['capacity']}  slots before: FREE={slots['FREE']} HELD={slots.get('HELD',0)}")
             assert before['capacity'] == CAPACITY and before['scannerSlots']['FREE'] == CAPACITY
 
             # --- Part 1: the unique fileId index decides a creation race ---
+            section("Part 1 — Creation race: 8 threads, 1 fileId, database picks the winner")
             contested_file = str(uuid.uuid4())
             body = {'fileId': contested_file, 'scannerMode': 'SLOW'}
-            print(f'\nPART_1_SIMULTANEOUS_CREATIONS fileId={contested_file}', flush=True)
+            info(f"fileId={contested_file}")
             creations, elapsed = fire_parallel(
                 [(quarantine_base, 'POST', '/api/v1/quarantine', body)] * CREATION_CONTENDERS)
             report(creations, elapsed,
                    [(201, None, 1), (409, 'File is already quarantined', CREATION_CONTENDERS - 1)])
             _, records = call(quarantine_base, 'GET', '/api/v1/quarantine/_evidence/summary')
-            print('PART_1_DATABASE total={total} QUARANTINED={byState[QUARANTINED]}'.format(**records),
-                  flush=True)
+            ok(f"Database has exactly 1 record  (total={records['total']}  QUARANTINED={records['byState']['QUARANTINED']})")
             assert records['total'] == 1, 'the race must leave exactly one record'
 
             # --- Part 2: the slot table decides a scan burst ---
-            print(f'\nPART_2_PARALLEL_SCANS capacity={CAPACITY} files={SCAN_CONTENDERS}', flush=True)
+            section(f"Part 2 — Scan burst: {SCAN_CONTENDERS} parallel scans, capacity={CAPACITY}")
             ids = []
             for _ in range(SCAN_CONTENDERS):
                 status, created = call(quarantine_base, 'POST', '/api/v1/quarantine',
@@ -140,51 +158,52 @@ def main():
                     (409, 'Scanner capacity exhausted', SCAN_CONTENDERS - CAPACITY)])
 
             # --- Part 3: the rejected scans were delayed, not lost ---
+            section("Part 3 — Rejected scans are retried, not lost")
             _, during = call(quarantine_base, 'GET', '/api/v1/quarantine/_evidence/summary')
-            print('PART_3_AFTER_BURST', json.dumps(during, sort_keys=True), flush=True)
-            # The record left over from Part 1 was never scanned, so it is still
-            # QUARANTINED alongside the eighteen the burst refused.
+            info(f"After burst: {json.dumps(during['byState'])}  slots: {json.dumps(during['scannerSlots'])}")
             expected_queued = SCAN_CONTENDERS - CAPACITY + 1
             assert during['byState']['SCANNING'] == 0, during
             assert during['byState']['QUARANTINED'] == expected_queued, during
             assert during['scannerSlots'] == {'FREE': CAPACITY, 'HELD': 0}, 'slots must be back'
 
             settled = sum(1 for status, _ in scans if status == 200)
-            print(f'PART_3_BURST_ACCEPTED {settled} REJECTED {SCAN_CONTENDERS - settled}', flush=True)
+            info(f"Burst accepted={settled}  rejected={SCAN_CONTENDERS - settled}  (retrying rejected...)")
             for record_id, (status, _) in zip(ids, scans):
                 if status == 200:
-                    continue  # already settled by the burst
+                    continue
                 retry_status, response = call(quarantine_base,
                                               'POST', f'/api/v1/quarantine/{record_id}/scan')
                 assert retry_status == 200, (record_id, retry_status, response)
             _, final = call(quarantine_base, 'GET', '/api/v1/quarantine/_evidence/summary')
-            print('PART_3_FINALLY', json.dumps(final, sort_keys=True), flush=True)
+            ok(f"All {SCAN_CONTENDERS} files eventually scanned CLEAN")
+            ok(f"Slots restored: FREE={final['scannerSlots']['FREE']}  HELD={final['scannerSlots'].get('HELD',0)}")
             assert final['byState']['CLEAN'] == SCAN_CONTENDERS, final
             assert final['byState']['QUARANTINED'] == 1, final
             assert final['total'] == SCAN_CONTENDERS + 1, final
 
-            print('\nQUARANTINE_LOG_EVIDENCE slot claims and rejections', flush=True)
+            section("Log evidence — slot claims and rejections")
             for line in services.lines(quarantine_log, 'scanner_slot_acquired',
                                        'scanner_capacity_rejected'):
-                print(' ', line, flush=True)
-            print('SCANNER_LOG_EVIDENCE one scan_completed per file, no duplicate scans', flush=True)
+                info(line)
             completions = services.lines(scanner_log, 'scan_completed')
             for line in completions[:3]:
-                print(' ', line, flush=True)
-            print(f'  SCANNER_SCAN_COMPLETED_TOTAL {len(completions)} for '
-                  f'{SCAN_CONTENDERS} files', flush=True)
+                info(line)
+            ok(f"Scanner ran {len(completions)} scans for {SCAN_CONTENDERS} files (no duplicates)")
             assert len(completions) == SCAN_CONTENDERS, \
                 f'Scanner ran {len(completions)} scans for {SCAN_CONTENDERS} files'
         finally:
             services.stop(quarantine)
             services.stop(scanner)
-    print('\nCHALLENGE_1_PASS exactly', CAPACITY, 'of', SCAN_CONTENDERS,
-          'scans ran at a time and one record existed per file', flush=True)
+
+    print(f"\n{GREEN}{BOLD}╔{'═'*58}╗{RESET}")
+    print(f"{GREEN}{BOLD}║  CHALLENGE_1_PASS{' '*39}║{RESET}")
+    print(f"{GREEN}{BOLD}║  {CAPACITY} of {SCAN_CONTENDERS} scans ran at a time, 1 record per file{' '*(58-len(str(CAPACITY))-len(str(SCAN_CONTENDERS))-37)}║{RESET}")
+    print(f"{GREEN}{BOLD}╚{'═'*58}╝{RESET}\n", flush=True)
 
 
 if __name__ == '__main__':
     try:
         main()
     except AssertionError as failed:
-        print('CHALLENGE_1_FAIL', failed, file=sys.stderr, flush=True)
+        print(f'\n{RED}{BOLD}  CHALLENGE_1_FAIL  {failed}{RESET}', file=sys.stderr, flush=True)
         sys.exit(1)
