@@ -37,10 +37,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QuarantineResponse'
-        '400':
-          description: Invalid request
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
         '409':
           description: File already has a quarantine record, including a lost creation race
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/quarantine/{id}/scan:
     post:
       summary: Scan a quarantined file
@@ -61,12 +69,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QuarantineResponse'
-        '404':
-          description: Quarantine record not found
+        '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: Already scanned, already being scanned, or scanner capacity exhausted
-        '405':
-          description: Method not allowed on this path
+          description: >
+            Three distinct refusals share this status and are told apart by the
+            message: the record has already settled, a scan of it is already in
+            flight, or scanner capacity is exhausted.
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/quarantine/_evidence/summary:
     get:
       summary: Summarize quarantine records by state and report the scanner capacity
@@ -86,12 +102,16 @@ paths:
       responses:
         '200':
           description: Quarantine record
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/QuarantineResponse'
-        '404':
-          description: Quarantine record not found
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /health:
     get:
       summary: Check service liveness
@@ -129,7 +149,59 @@ components:
       description: Request correlation ID, returned on all responses.
       schema:
         type: string
+  responses:
+    BadRequest:
+      description: >
+        Validation failure: fileId is not a UUID, scannerMode is outside
+        CLEAN, INFECTED, FAIL or SLOW, or the body is malformed JSON.
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotFound:
+      description: No quarantine record exists for the supplied identifier.
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    MethodNotAllowed:
+      description: The path exists but the HTTP method does not.
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    UnsupportedMediaType:
+      description: The request body is not application/json.
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    InternalError:
+      description: Unexpected failure; the details are in the log, not the body.
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
   schemas:
+    ApiError:
+      type: object
+      description: The one error body every service returns, from the shared handler.
+      required: [timestamp, status, error, message, path, correlationId, fieldErrors]
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        error: { type: string }
+        message: { type: string }
+        path: { type: string }
+        correlationId: { type: string }
+        fieldErrors:
+          type: object
+          additionalProperties: { type: string }
     QuarantineRequest:
       type: object
       required: [fileId, scannerMode]
