@@ -1,7 +1,7 @@
 # Demo runbook — starting the system and demonstrating it
 
 A presenter's script, not a reference. It assumes you are in the repository root on
-macOS or Linux with JDK 21+ and Maven 3.9+, and it uses the packaged JARs exactly the
+macOS or Linux with JDK 17+ and Maven 3.9+, and it uses the packaged JARs exactly the
 way `README.md` tells a reviewer to run them, so what the video shows is what a marker
 gets by following the README.
 

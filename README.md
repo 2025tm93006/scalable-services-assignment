@@ -20,9 +20,9 @@ checked is answered 503 rather than released on trust. See
 
 ## Prerequisites
 
-JDK 21 or later and Maven 3.9 or later. Maven must be able to resolve public
-dependencies. The build compiles at Java 21 bytecode and the test suite is verified
-on Temurin 21 and SapMachine 25; Surefire passes `-Dnet.bytebuddy.experimental=true`
+JDK 17 or later and Maven 3.9 or later. Maven must be able to resolve public
+dependencies. The build compiles at Java 17 bytecode and the test suite is verified
+on SapMachine 17 and SapMachine 25; Surefire passes `-Dnet.bytebuddy.experimental=true`
 so Mockito can mock service classes on JDKs newer than the Byte Buddy version
 Spring Boot 3.3.5 ships. All database credentials here are local demonstration values.
 

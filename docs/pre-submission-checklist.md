@@ -24,7 +24,7 @@ Run these before pushing anything; all of them exit non-zero when an invariant b
 a green run is a test result and not a transcript.
 
 ```bash
-export JAVA_HOME=$(/usr/libexec/java_home)   # or any JDK 21+
+export JAVA_HOME=$(/usr/libexec/java_home)   # or any JDK 17+
 mvn -B -ntp clean package                    # 178 tests, zero failures
 bash scripts/health.sh                       # with the four services up
 bash scripts/e2e.sh                          # 32 asserted steps

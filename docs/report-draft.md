@@ -242,7 +242,7 @@ Three layers, all runnable from the repository root:
 | Scripted, cross-process | the transaction and the three challenges against packaged JARs in separate processes | `e2e.sh` 32 checks, `concurrency.py`, `reclaim.py`, `resilience.py`, `verification.py` 22 checks, four persistence scripts |
 
 `mvn clean package` runs 178 tests (Intake 36, Quarantine 47, Scanner 34, Release 61)
-with zero failures, on Temurin 21 and SapMachine 25. Failure paths are deliberate:
+with zero failures, on SapMachine 17 and SapMachine 25. Failure paths are deliberate:
 400/404/405/409/415/500/503, the killed process, the stopped dependency, the lying
 client. Reports and raw output are in `evidence/tests/`, screenshots in the appendix
 show command, output and timestamp together, as the marking guide asks.
