@@ -31,8 +31,8 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         // Release verifies against Quarantine, so the stub answers on this port; a tiny
         // budget keeps the unreachable case cheap to test.
-        "server.port=18085",
-        "quarantine.base-url=http://localhost:18085",
+        "server.port=18084",
+        "quarantine.base-url=http://localhost:18084",
         "quarantine.connect-timeout-millis=200",
         "quarantine.read-timeout-millis=500",
         "quarantine.max-attempts=2",

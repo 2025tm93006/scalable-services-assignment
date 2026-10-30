@@ -5,18 +5,19 @@ JAVA_RUNTIME 25.0.5.0.3 (Maven 3.9.16); compilation target release 21
 OS macOS 27.0.1 arm64
 SOURCE /Users/C5421903/Documents/Learning/BITS/Scalable Services/scalable-services-assignment
 COMMAND mvn -B -ntp clean package
-RESULT BUILD SUCCESS; Release 54 tests = 19 service + 8 quarantine client + 27 HTTP/H2;
+RESULT BUILD SUCCESS; Release 61 tests = 19 service + 8 quarantine client + 7 verifier + 27 HTTP/H2;
   0 failures/errors/skipped
 COVERAGE ReleaseServiceTest (BR4 claim checks, the verified state, never-quarantined, in-flight
   scan, timestamp tolerance to the millisecond, unreachable Quarantine answered 503, replay,
-  primary-key race, unrelated-failure handling), QuarantineClientTest (verification retry curve,
+  primary-key race, unrelated-failure handling), QuarantineStateVerifierTest (accepted claim, missing record, every non-clean state named, the
+  millisecond boundary, the outage staying a 503), QuarantineClientTest (verification retry curve,
   jitter bounds, exponent cap, failure reason, budget validation), ReleaseHttpTest (replay,
   8 simultaneous releases, validation, 400/404/405/409/415/503, the shared error model,
   correlation IDs, health, and that a replay performs no verification call)
 TEST_ISOLATION in-memory H2; the Quarantine dependency is StubQuarantineSupport, a nested
   @RestController in the same test application component-scanned on the application's own port,
   deliberately not registered as a @Bean, so no external service is started by the suite
-TEST_PORT 18085 pinned by ReleaseHttpTest, which moved from RANDOM_PORT to DEFINED_PORT because a
+TEST_PORT 18084 pinned by ReleaseHttpTest, which moved from RANDOM_PORT to DEFINED_PORT because a
   service-to-service call needs a base URL that can point back at the stub in the same context
 VERIFICATION_RELEASED quarantineState supplied by a caller is now only a claim; the decision uses
   GET /api/v1/quarantine/by-file/{fileId}, 409 on a mismatch and 503 when Quarantine never answers

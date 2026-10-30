@@ -40,7 +40,7 @@ flowchart LR
 
     subgraph r["release-service :8084"]
         Release[ReleaseController<br/>ReleaseService<br/>ReleaseRecordWriter]
-        Verifier[QuarantineClient<br/>verification read]
+        Verifier[QuarantineStateVerifier<br/>QuarantineClient]
         RDB[("H2 file<br/>data/release.mv.db<br/>release_record")]
     end
 
@@ -153,41 +153,47 @@ sequenceDiagram
     autonumber
     participant C as Client
     participant R as ReleaseService
+    participant V as QuarantineStateVerifier
     participant QC as QuarantineClient
     participant Q as QuarantineService
 
     C->>R: POST /api/v1/releases {fileId, CLEAN, quarantinedAt}
     R->>R: already released? replay release_record, no call out
     R->>R: claim says CLEAN and a timestamp is present
-    R->>QC: verify(fileId)
+    R->>V: requireReleasable(claim)
+    V->>QC: findForFile(fileId)
     QC->>Q: GET /api/v1/quarantine/by-file/fileId (X-Correlation-Id forwarded)
     Q-->>QC: 200 state=CLEAN, quarantinedAt
-    QC-->>R: the authoritative record
-    R->>R: state is CLEAN and quarantinedAt matches to the millisecond
+    QC-->>V: the authoritative record
+    V->>V: state is CLEAN and quarantinedAt matches to the millisecond
+    V-->>R: accepted
     R->>R: insert release_record, the primary key decides a race
     R-->>C: 201 RELEASED
 
     Note over C,Q: A client claims CLEAN for a file Quarantine reports as INFECTED
     C->>R: POST /api/v1/releases {fileId, CLEAN, quarantinedAt}
-    R->>QC: verify(fileId)
+    R->>V: requireReleasable(claim)
+    V->>QC: findForFile(fileId)
     QC->>Q: GET /api/v1/quarantine/by-file/fileId
     Q-->>QC: 200 state=INFECTED
-    R-->>C: 409 Quarantine reports this file as INFECTED, not CLEAN
+    V-->>C: 409 Quarantine reports this file as INFECTED, not CLEAN
     Note over R: nothing stored, so the later GET is 404
 
     Note over C,Q: Quarantine is unreachable
     C->>R: POST /api/v1/releases {fileId, CLEAN, quarantinedAt}
+    R->>V: requireReleasable(claim)
     loop attempts 1..quarantine.max-attempts, backoff and jitter between them
-        R->>QC: verify(fileId)
+        V->>QC: findForFile(fileId)
         QC->>Q: GET /api/v1/quarantine/by-file/fileId
         Q--xQC: no answer
     end
-    R-->>C: 503 Quarantine did not answer after 3 attempts
+    V-->>C: 503 Quarantine did not answer after 3 attempts
     Note over R: no fall back to trusting the claim, and nothing stored
 ```
 
-Proven by `ReleaseServiceTest`, `ReleaseHttpTest` against a stub Quarantine answering on
-the application's own socket, and `evidence/tests/verification-run.txt`.
+Proven by `QuarantineStateVerifierTest` for the verdict in isolation, `ReleaseServiceTest`
+for when it is asked, `ReleaseHttpTest` against a stub Quarantine answering on the
+application's own socket, and `evidence/tests/verification-run.txt`.
 
 ## Failure and contention sequence
 

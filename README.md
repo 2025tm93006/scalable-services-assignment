@@ -29,8 +29,8 @@ Spring Boot 3.3.5 ships. All database credentials here are local demonstration v
 ## Build and run
 
 From this folder, run `mvn clean package`. Every service includes unit and
-HTTP/database tests (171 tests in total: Intake 36, Quarantine 47, Scanner 34,
-Release 54).
+HTTP/database tests (178 tests in total: Intake 36, Quarantine 47, Scanner 34,
+Release 61).
 Run each command in a separate terminal after packaging:
 
 ```bash

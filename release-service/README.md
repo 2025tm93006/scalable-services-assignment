@@ -106,7 +106,7 @@ only when it can still change the answer.
 
 ## Verifying a state instead of being told one
 
-`QuarantineClient` issues `GET /api/v1/quarantine/by-file/{fileId}` on the JDK HTTP
+`QuarantineStateVerifier` asks `QuarantineClient`, which issues `GET /api/v1/quarantine/by-file/{fileId}` on the JDK HTTP
 client with the timeouts, attempts and jittered backoff in the table above, forwarding
 `X-Correlation-Id`. It is a read, so a retry is harmless, and `QuarantineClientTest` pins
 the curve the way the Scanner client's is pinned.
@@ -125,9 +125,9 @@ host clock. One millisecond apart is still refused.
 
 | Requirement | Code | Verification |
 |---|---|---|
-| BR4: released only when the owner reports `CLEAN` with a matching timestamp | `ReleaseService.requireClaimedReleasable`, `requireVerifiedReleasable` | `ReleaseServiceTest.infectedCannotRelease`, `cleanAfterQuarantineReleases`, `aClientCannotReleaseAFileQuarantineReportsAsInfected`, `aFileThatWasNeverQuarantinedCannotBeReleased`, `aScanStillInFlightIsNotAReleaseableCleanFile`; `ReleaseHttpTest.aClientCannotReleaseAFileQuarantineReportsAsInfected` |
-| BR4: an unverifiable state is not released | `QuarantineClient.findForFile`, `common` `ServiceUnavailableException` | `ReleaseServiceTest.anUnreachableQuarantineRefusesTheReleaseInsteadOfTrustingTheCaller`, `ReleaseHttpTest.anUnreachableQuarantineRefusesTheReleaseWith503AndStoresNothing`; `scripts/verification.py` Part C |
-| A timestamp claim has to be the record's own instant | `ReleaseService.sameInstantToTheMillisecond` | `aStaleQuarantineTimestampDoesNotMatchTheRecord`, `aTimestampThatDiffersOnlyByStoredPrecisionIsStillTheSameInstant`, `aTimestampOneMillisecondApartIsNotTheSameQuarantine` |
+| BR4: released only when the owner reports `CLEAN` with a matching timestamp | `ReleaseService.requireClaimedReleasable`, `QuarantineStateVerifier.requireReleasable` | `ReleaseServiceTest.infectedCannotRelease`, `cleanAfterQuarantineReleases`, `aClientCannotReleaseAFileQuarantineReportsAsInfected`, `aFileThatWasNeverQuarantinedCannotBeReleased`, `aScanStillInFlightIsNotAReleaseableCleanFile`; `ReleaseHttpTest.aClientCannotReleaseAFileQuarantineReportsAsInfected` |
+| BR4: an unverifiable state is not released | `QuarantineStateVerifier.requireReleasable`, `QuarantineClient.findForFile`, `common` `ServiceUnavailableException` | `ReleaseServiceTest.anUnreachableQuarantineRefusesTheReleaseInsteadOfTrustingTheCaller`, `ReleaseHttpTest.anUnreachableQuarantineRefusesTheReleaseWith503AndStoresNothing`; `scripts/verification.py` Part C |
+| A timestamp claim has to be the record's own instant | `QuarantineStateVerifier.sameInstantToTheMillisecond` | `aStaleQuarantineTimestampDoesNotMatchTheRecord`, `aTimestampThatDiffersOnlyByStoredPrecisionIsStillTheSameInstant`, `aTimestampOneMillisecondApartIsNotTheSameQuarantine` |
 | A repeat request returns the original decision without another row, and without calling out | `ReleaseService.release` replay branch | `alreadyReleasedFileReplaysTheOriginalRecordWithoutWriting`, `ReleaseHttpTest.replayingAFinishedReleaseDoesNotAskQuarantineAgain`, `aQuarantineThatIsDownCannotUnmakeAFileThatWasAlreadyReleased` |
 | Simultaneous releases of one file store exactly one row | `ReleaseRecordWriter`, `fileId` primary key | `eightSimultaneousRequestsReleaseOnce`; `simultaneousReleaseRaceReplaysTheCommittedWinner` |
 | The verification call is as resilient as the scan call | `QuarantineClient` with JDK HTTP client, timeouts, backoff and jitter | `QuarantineClientTest`; `evidence/tests/verification-run.txt` |
@@ -176,14 +176,17 @@ mvn -pl release-service -am test
 ```
 
 `ReleaseServiceTest` covers the business rules, the verified claim, replay and the
-primary-key race with the persistence and the Quarantine client mocked. `ReleaseHttpTest`
-runs the real application on a fixed port (18085) against an isolated in-memory database,
+primary-key race with the persistence and the Quarantine client mocked, wired to the real
+`QuarantineStateVerifier`; `QuarantineStateVerifierTest` covers that verdict in isolation -
+accepted CLEAN, missing record, all four non-clean states, the millisecond boundary in both
+directions, and the outage staying a 503. `ReleaseHttpTest`
+runs the real application on a fixed port (18084) against an isolated in-memory database,
 with `StubQuarantineSupport` - a nested `@RestController` found by the test application's
 component scan - answering the verification read on that same socket, so the 409, 503 and
 replay-without-calling-out paths are exercised over HTTP. It covers replay, 8 simultaneous
 requests, validation, 400/404/405/409/415/503 errors, the shared error model, correlation
 IDs and health. `QuarantineClientTest` covers the retry curve and how a failed read is
-reported. Release now runs 54 tests in total; Surefire reports are written to
+reported. Release now runs 61 tests in total; Surefire reports are written to
 `release-service/target/surefire-reports/`.
 
 Cross-process, with three real services on their own ports and temporary databases:

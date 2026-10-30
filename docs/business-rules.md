@@ -10,7 +10,7 @@ report so claims stay traceable in both documents.
 | BR1 | A repeated intake with the same `Idempotency-Key` and the same payload returns the original response and stores no second record | Intake | `IntakeService.replay` |
 | BR2 | The same `Idempotency-Key` with a different payload is rejected with 409 and leaves the original record untouched | Intake | `IntakeService.replay` fingerprint comparison |
 | BR3 | A file is quarantined once, scanned once, and its scan outcome follows the state machine `QUARANTINED → SCANNING → CLEAN \| INFECTED \| FAILED`, where the verdict comes from the Scanner service | Quarantine | `QuarantineService.quarantine`, `QuarantineService.scan`, `ScanSlotRepository.claim`, `ScanReclaimJob` |
-| BR4 | A file is released only when Quarantine's own record reports it `CLEAN` with the timestamp the caller supplied; a claim that does not match is 409 and stores nothing, and a state that cannot be checked is 503 | Release | `ReleaseService.requireClaimedReleasable`, `ReleaseService.requireVerifiedReleasable`, `QuarantineClient.findForFile` |
+| BR4 | A file is released only when Quarantine's own record reports it `CLEAN` with the timestamp the caller supplied; a claim that does not match is 409 and stores nothing, and a state that cannot be checked is 503 | Release | `ReleaseService.requireClaimedReleasable`, `QuarantineStateVerifier.requireReleasable`, `QuarantineClient.findForFile` |
 
 ## Traceability
 

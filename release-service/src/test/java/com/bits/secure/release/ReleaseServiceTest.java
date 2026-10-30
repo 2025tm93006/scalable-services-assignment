@@ -32,7 +32,10 @@ class ReleaseServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReleaseService(repository, new ReleaseRecordWriter(repository), quarantine);
+        // The real verifier over a mocked client: these tests are about the decision order,
+        // and the verifier's own verdicts are covered in QuarantineStateVerifierTest.
+        service = new ReleaseService(repository, new ReleaseRecordWriter(repository),
+                new QuarantineStateVerifier(quarantine));
         // Lenient because most of these cases are refused before Release asks Quarantine;
         // the tests that do ask either override this or assert that they never get here.
         lenient().when(quarantine.findForFile(fileId))
