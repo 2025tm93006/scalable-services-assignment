@@ -30,6 +30,7 @@ With the separate Maven settings from local setup, add `-s ../maven-settings.xml
 | `quarantine-persistence.txt` | A real process restart keeps the state Scanner reported, the timestamps and the unique `fileId`, so a replayed create is 409 and a replayed scan is 409 |
 | `e2e-run.txt` | `scripts/e2e.sh` driving one transaction through Intake, Quarantine, Scanner and Release with its failure cases |
 | `verification-run.txt` | `scripts/verification.py` proving the release trust boundary across three real services, including the outage and the recovery |
+| `fresh-clone-run.txt` | A clean clone of the pushed branch, built and run following only `README.md`: package, four services, health, e2e, every challenge script and all four restart checks |
 | `release-unit-tests.txt` | Surefire report for BR4, replay, the primary-key race and unrelated-failure handling |
 | `release-http-tests.txt` | Surefire report for replay, 8 simultaneous releases, validation, errors and correlation, and for the verified claim: a false `CLEAN` refused, an unreachable Quarantine answered 503, a replay that makes no call out |
 | `release-test-environment.txt` | Release test command, runtime and result summary |

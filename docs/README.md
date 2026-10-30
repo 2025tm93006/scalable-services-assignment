@@ -28,6 +28,7 @@ restating the result:
 | Persistence across a restart | [`../evidence/tests`](../evidence/tests) — the four `*-persistence.txt` files |
 | The whole transaction end to end | `../evidence/tests/e2e-run.txt` — `scripts/e2e.sh` |
 | Test suite | `../evidence/tests` — Surefire reports for all four services |
+| A stranger can run it | `../evidence/tests/fresh-clone-run.txt` — a clean clone of the branch, built and driven following `README.md` only |
 
 Each service documents its own API, data design, configuration and limitations in
 `../intake-service/README.md`, `../quarantine-service/README.md`,
