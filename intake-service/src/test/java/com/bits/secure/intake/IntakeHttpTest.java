@@ -2,9 +2,11 @@ package com.bits.secure.intake;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -83,6 +85,67 @@ class IntakeHttpTest {
         ResponseEntity<String> original = post("conflict-key", payload());
         assertError(post("conflict-key", payload().replace("demo.txt", "changed.txt")), 409);
         assertEquals(original.getBody(), post("conflict-key", payload()).getBody());
+        assertEquals(1, repository.count());
+    }
+
+    @ParameterizedTest(name = "changing {0} conflicts without changing the original")
+    @MethodSource("metadataChanges")
+    void changingAnyMetadataFieldReturns409AndPreservesTheOriginal(String field, String changedValue)
+            throws Exception {
+        String key = "field-conflict-key";
+        ResponseEntity<String> original = post(key, payload());
+        assertEquals(201, original.getStatusCode().value());
+        FileRecord stored = repository.findByIdempotencyKey(key).orElseThrow();
+        UUID originalId = stored.getId();
+        String originalFingerprint = stored.getFingerprint();
+        String originalResponse = stored.getResponseBody();
+
+        ObjectNode changed = (ObjectNode) mapper.readTree(payload());
+        changed.set(field, mapper.readTree(changedValue));
+        ResponseEntity<String> conflict = post(key, changed.toString());
+        assertError(conflict, 409);
+        assertEquals("Idempotency-Key was used with a different payload",
+                mapper.readTree(conflict.getBody()).get("message").asText());
+
+        FileRecord afterConflict = repository.findByIdempotencyKey(key).orElseThrow();
+        assertEquals(originalId, afterConflict.getId());
+        assertEquals(originalFingerprint, afterConflict.getFingerprint());
+        assertEquals(originalResponse, afterConflict.getResponseBody());
+        ResponseEntity<String> replay = post(key, payload());
+        assertEquals(201, replay.getStatusCode().value());
+        assertEquals(original.getBody(), replay.getBody());
+        assertEquals(1, repository.countByIdempotencyKey(key));
+        assertEquals(1, repository.count());
+    }
+
+    static Stream<Arguments> metadataChanges() {
+        return Stream.of(
+                Arguments.of("filename", "\"changed.txt\""),
+                Arguments.of("contentType", "\"application/octet-stream\""),
+                Arguments.of("sizeBytes", "5"),
+                Arguments.of("sha256", "\"" + "b".repeat(64) + "\""),
+                Arguments.of("scannerMode", "\"INFECTED\""));
+    }
+
+    @Test
+    void invalidRequestDoesNotConsumeKeyAndCorrectedRequestCanBeReplayed() throws Exception {
+        String key = "corrected-request-key";
+        assertError(post(key, payload().replace("\"sizeBytes\":4", "\"sizeBytes\":-1")), 400);
+        assertTrue(repository.findByIdempotencyKey(key).isEmpty());
+        assertEquals(0, repository.count());
+
+        ResponseEntity<String> corrected = post(key, payload());
+        assertEquals(201, corrected.getStatusCode().value());
+        JsonNode response = mapper.readTree(corrected.getBody());
+        assertEquals("RECEIVED", response.get("status").asText());
+        FileRecord stored = repository.findByIdempotencyKey(key).orElseThrow();
+        assertEquals(stored.getId().toString(), response.get("fileId").asText());
+        assertEquals(response, mapper.readTree(stored.getResponseBody()));
+
+        ResponseEntity<String> replay = post(key, payload());
+        assertEquals(201, replay.getStatusCode().value());
+        assertEquals(corrected.getBody(), replay.getBody());
+        assertEquals(1, repository.countByIdempotencyKey(key));
         assertEquals(1, repository.count());
     }
 

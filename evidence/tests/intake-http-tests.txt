@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.bits.secure.intake.IntakeHttpTest
 -------------------------------------------------------------------------------
-Tests run: 23, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.083 s -- in com.bits.secure.intake.IntakeHttpTest
+Tests run: 29, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.707 s -- in com.bits.secure.intake.IntakeHttpTest

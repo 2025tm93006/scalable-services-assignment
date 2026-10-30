@@ -21,7 +21,7 @@ With the separate Maven settings from local setup, add `-s ../maven-settings.xml
 | Evidence | What it verifies |
 |---|---|
 | `intake-unit-tests.txt` | Surefire report for business rules, fingerprinting, unique-key race handling and invalid keys |
-| `intake-http-tests.txt` | Surefire report for real HTTP/H2 replay, concurrency, validation, errors and correlation |
+| `intake-http-tests.txt` | Surefire report for 29 real HTTP/H2 cases, including replay, concurrency, conflicts for each metadata field, corrected retry after invalid metadata, validation, errors and correlation |
 | `intake-test-environment.txt` | Test command, runtime and where the tested source copy was located |
 | `intake-persistence.txt` | A real process restart preserves the original response and a single database row |
 | `quarantine-unit-tests.txt` | Surefire reports for BR3 in isolation: one quarantine per file, the create race answered as a conflict, Scanner verdicts, outages, unexpected verdicts, exhausted capacity, and the `ScannerClient` retry curve and failure reporting |
@@ -40,11 +40,15 @@ With the separate Maven settings from local setup, add `-s ../maven-settings.xml
 | `scanner-test-environment.txt` | Scanner test command, runtime and result summary |
 | `scanner-persistence.txt` | A real process restart replays the stored scan result with a single attempt |
 
-These reports were captured for the current Intake implementation before its
-source files were applied to the repository. Challenge 2's live script output
-and application log are captured separately in `../challenge-2-idempotency/`.
-Regenerate evidence after changing the implementation. Full test reports are
-also written under `intake-service/target/surefire-reports/` when tests run here.
+The Intake unit and HTTP captures were refreshed after adding the two test
+methods for individual metadata-field conflicts and corrected retry after a
+validation failure. This run passed 42 cases (13 unit and 29 HTTP/database); its
+runtime and command are in `intake-test-environment.txt`. Other service captures,
+restart checks and the earlier clean-clone run retain their original provenance.
+Challenge 2's live script output and application log remain separately in
+`../challenge-2-idempotency/`. Regenerate evidence after changing the implementation.
+Full Intake test reports are also written under
+`intake-service/target/surefire-reports/` when tests run here.
 
 After building the Intake JAR, capture the isolated persistence test from the root:
 

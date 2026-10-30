@@ -25,7 +25,7 @@ a green run is a test result and not a transcript.
 
 ```bash
 export JAVA_HOME=$(/usr/libexec/java_home)   # or any JDK 17+
-mvn -B -ntp clean package                    # 178 tests, zero failures
+mvn -B -ntp clean package                    # 184 tests; check for zero failures
 bash scripts/health.sh                       # with the four services up
 bash scripts/e2e.sh                          # 32 asserted steps
 python3 scripts/concurrency.py

@@ -110,8 +110,8 @@ Content deduplication and idempotency are different business rules.
 | Requirement | Code | Verification |
 |---|---|---|
 | BR1: same key/payload replay without another record | `IntakeService`, response snapshot, unique key | Unit replay test; HTTP replay and 8 simultaneous requests |
-| BR2: different payload for same key is rejected | `IntakeService.replay` | Unit conflict/race tests; HTTP sequential/simultaneous conflicts |
-| REST versioning, validation and consistent errors | `IntakeController`, `IntakeRequest`, shared error handler | HTTP invalid metadata/key/JSON/UUID and 400/404/405/409/415 tests |
+| BR2: different payload for same key is rejected | `IntakeService.replay` | Unit conflict/race tests; HTTP sequential/simultaneous conflicts and all five metadata-field changes |
+| REST versioning, validation and consistent errors | `IntakeController`, `IntakeRequest`, shared error handler | HTTP invalid metadata/key/JSON/UUID, corrected retry with the same key, and 400/404/405/409/415 tests |
 | Database per service | `FileRecord`, `FileRepository`, Intake configuration | Tests inspect actual H2 row counts and stored response |
 | Health and correlation | Shared health endpoint/filter | HTTP health, response header and error correlation tests |
 | Challenge 2 | Key, fingerprint, stored response and database constraint | `scripts/idempotency.sh`, its output and replay logs |
@@ -121,6 +121,11 @@ Run unit and real HTTP/H2 tests:
 ```bash
 mvn -pl intake-service -am test
 ```
+
+The Intake suite contains 42 cases: 13 unit and 29 HTTP/database tests. The HTTP
+tests also verify that changing each metadata field returns 409 without altering
+the original record or replay, and that invalid metadata does not consume a key:
+a corrected request with that key can succeed and replay normally.
 
 Tests use a separate H2 database and a temporary port. Reports are written to
 `intake-service/target/surefire-reports/`. With Intake running, run

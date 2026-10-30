@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.bits.secure.intake.IntakeServiceTest
 -------------------------------------------------------------------------------
-Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.241 s -- in com.bits.secure.intake.IntakeServiceTest
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.176 s -- in com.bits.secure.intake.IntakeServiceTest

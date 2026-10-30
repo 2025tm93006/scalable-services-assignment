@@ -1,6 +1,8 @@
-CAPTURED_UTC 2026-10-24T08:09:19.591890+00:00
-JAVA_HOME /Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home
-SOURCE /private/tmp/intake-persistence-20261024/project (temporary copy before applying files)
-COMMAND mvn -B -ntp -o -s /Users/amrurama/Desktop/scalable-services/maven-settings.xml -f /private/tmp/intake-persistence-20261024/project/pom.xml -pl intake-service -am clean package
-RESULT BUILD SUCCESS; Intake unit 13 + HTTP/H2 23 = 36 tests; 0 failures/errors/skipped
-RESTART_CHECK python3 scripts/persistence.py; INTAKE_PERSISTENCE_PASS; isolated file database
+CAPTURED_UTC 2026-10-30T15:26:12.473990+00:00
+RUNTIME Java 25.0.2; compiler release target 17
+SOURCE /private/tmp/intake-test-expansion/project (isolated copy of the repository, with the new tests)
+COMMAND mvn -B -ntp -o -s /Users/amrurama/Desktop/scalable-services/maven-settings.xml -pl intake-service -am test
+RESULT BUILD SUCCESS; Intake unit 13 + HTTP/H2 29 = 42 tests; 0 failures/errors/skipped
+ADDED two test methods, six cases: five individual metadata changes each return 409 and preserve the original record and replay; invalid metadata does not consume the key and a corrected request can create and replay normally
+SCOPE Intake suite only; other service test captures and earlier clean-clone evidence are unchanged
+RESTART_CHECK not rerun for this test-only change; the earlier persistence capture remains in intake-persistence.txt

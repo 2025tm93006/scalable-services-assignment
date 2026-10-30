@@ -237,12 +237,15 @@ Three layers, all runnable from the repository root:
 | Layer | What it proves | Result |
 |---|---|---|
 | Unit | each business rule in isolation, with persistence and the HTTP clients mocked | `IntakeServiceTest` 13, `QuarantineServiceTest` 14, `ScannerServiceTest` 14, `ReleaseServiceTest` 19 |
-| HTTP/database | the real application over a socket against an isolated in-memory H2, including concurrency and the stubbed dependency | `IntakeHttpTest` 23, `QuarantineHttpTest` 2, `QuarantineScanResilienceTest` 7, `QuarantineCircuitBreakerTest` 1, `ScannerHttpTest` 20, `ReleaseHttpTest` 27 |
+| HTTP/database | the real application over a socket against an isolated in-memory H2, including concurrency and the stubbed dependency | `IntakeHttpTest` 29, `QuarantineHttpTest` 2, `QuarantineScanResilienceTest` 7, `QuarantineCircuitBreakerTest` 1, `ScannerHttpTest` 20, `ReleaseHttpTest` 27 |
 | Client and mechanism | retry curves, jitter bounds, failure reporting, breaker transitions, reclaim rules | `ScannerClientTest` 8, `ScannerCircuitBreakerTest` 8, `ScanReclaimJobTest` 7, `QuarantineStateVerifierTest` 7, `QuarantineClientTest` 8 |
 | Scripted, cross-process | the transaction and the three challenges against packaged JARs in separate processes | `e2e.sh` 32 checks, `concurrency.py`, `reclaim.py`, `resilience.py`, `verification.py` 22 checks, four persistence scripts |
 
-`mvn clean package` runs 178 tests (Intake 36, Quarantine 47, Scanner 34, Release 61)
-with zero failures, on SapMachine 17 and SapMachine 25. Failure paths are deliberate:
+The suite now contains 184 tests (Intake 42, Quarantine 47, Scanner 34, Release 61).
+The latest Intake run on Java 25 passed all 42 tests, including five individual
+metadata-field conflicts and a corrected request reusing a key after validation
+failure. The other service counts use their existing passing captures; the full
+184-test reactor was not rerun for this test-only change. Failure paths are deliberate:
 400/404/405/409/415/500/503, the killed process, the stopped dependency, the lying
 client. Reports and raw output are in `evidence/tests/`, screenshots in the appendix
 show command, output and timestamp together, as the marking guide asks.
