@@ -7,22 +7,20 @@ echo -e "${BOLD}${CYAN}"
 echo "╔══════════════════════════════════════════════╗"
 echo "║         SECURE FILE QUARANTINE SYSTEM        ║"
 echo "║              Health Check                    ║"
-echo "╚══════════════════════════════════════════════╝${RESET}"
+echo -e "╚══════════════════════════════════════════════╝${RESET}"
 echo ""
 
-declare -A NAMES=(
-  ["http://localhost:8081"]="Intake      :8081"
-  ["http://localhost:8082"]="Quarantine  :8082"
-  ["http://localhost:8083"]="Scanner     :8083"
-  ["http://localhost:8084"]="Release     :8084"
+URLS=(
+  "${INTAKE_URL:-http://localhost:8081}|Intake      :8081"
+  "${QUARANTINE_URL:-http://localhost:8082}|Quarantine  :8082"
+  "${SCANNER_URL:-http://localhost:8083}|Scanner     :8083"
+  "${RELEASE_URL:-http://localhost:8084}|Release     :8084"
 )
 
 ALL_OK=true
-for url in "${INTAKE_URL:-http://localhost:8081}" \
-           "${QUARANTINE_URL:-http://localhost:8082}" \
-           "${SCANNER_URL:-http://localhost:8083}" \
-           "${RELEASE_URL:-http://localhost:8084}"; do
-  name="${NAMES[$url]:-$url}"
+for entry in "${URLS[@]}"; do
+  url="${entry%%|*}"
+  name="${entry##*|}"
   response=$(curl --silent --show-error --max-time 10 -w "\n%{http_code}" "$url/health" 2>&1) || true
   http_code=$(echo "$response" | tail -1)
   body=$(echo "$response" | head -1)
