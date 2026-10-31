@@ -48,11 +48,6 @@ CORRELATION = 'verification-' + str(uuid.uuid4())
 failures = []
 
 
-def pause(say):
-    print(f"\n{YELLOW}{BOLD}  SAY: {say}{RESET}")
-    input(f"  {DIM}[ press Enter to continue... ]{RESET}\n")
-
-
 def check(condition, description, detail=None):
     color = GREEN if condition else RED
     mark  = '✔' if condition else '✘'
@@ -146,9 +141,6 @@ def main():
             release_process = start_release('1')
 
             # --- A: the honest case still works, and the check is visible in the log ---
-            pause("I'm demoing the Release service — it satisfies Business Rule 4: only CLEAN files "
-                  "can be released, verified at Quarantine, not trusted from the caller. "
-                  "Part A shows the happy path.")
             section("Part A — Verified release: clean file releases against the owner's record")
             record_id, file_id = quarantine_file(quarantine, 'CLEAN')
             settled = scan(quarantine, record_id)
@@ -168,10 +160,6 @@ def main():
                   verified_lines[-1] if verified_lines else 'no line')
 
             # --- B: the claim is only a claim ---
-            pause("A clean file quarantined, scanned, and released — 201 RELEASED. "
-                  "The log shows release_verified, confirming Release called Quarantine directly. "
-                  "Same request again returns identical 201 — that's idempotency, no outbound call made. "
-                  "Part B shows what happens when the caller lies.")
             section("Part B — Lying client: claiming CLEAN for infected/missing/wrong-time is refused")
             infected_record, infected_file = quarantine_file(quarantine, 'INFECTED')
             infected_state = scan(quarantine, infected_record)['state']
@@ -199,9 +187,6 @@ def main():
                   stale.get('message'))
 
             # --- C: cannot check, so cannot release ---
-            pause("Three false claims — infected file claimed as CLEAN, a file never quarantined, "
-                  "a real clean file with the wrong timestamp. All three are 409. "
-                  "The caller's word is just a claim. Part C shows what happens when Quarantine goes down.")
             section("Part C — Quarantine down: no check → no release (503, nothing stored)")
             waiting_record, waiting_file = quarantine_file(quarantine, 'CLEAN')
             check(scan(quarantine, waiting_record)['state'] == 'CLEAN',
@@ -242,9 +227,6 @@ def main():
                 info("RELEASE LOG  " + line)
 
             # --- D: the outage delays a release, it does not lose it ---
-            pause("Quarantine is stopped. Release spends its full retry budget — 3 attempts with "
-                  "exponential backoff and jitter — gets nothing back, returns 503. Nothing stored. "
-                  "Not being able to verify is never permission to release. Part D shows recovery.")
             section("Part D — Quarantine back: delayed release proceeds, replay works offline")
             status, health = call(release_base, 'GET', '/health')
             check(status == 200 and health['status'] == 'UP', 'Release stayed up throughout')
@@ -269,10 +251,6 @@ def main():
                   'the replay asked Quarantine nothing new')
 
             section("Release log — verification, refusals, outage trail")
-            pause("Quarantine back online — same request succeeds with 201. And the already-released "
-                  "file still replays while Quarantine is down. A finished decision lives in Release's "
-                  "own table. That covers BR4: trust boundary, both endpoints, idempotency, retry with "
-                  "backoff and jitter, and 503 on dependency failure.")
             for line in services.lines(release_log, 'release_verified', 'release_rejected',
                                         'release_replay', 'dependency_unavailable')[-8:]:
                 info(line)
