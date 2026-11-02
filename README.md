@@ -20,11 +20,17 @@ checked is answered 503 rather than released on trust. See
 
 ## Prerequisites
 
-JDK 17 or later and Maven 3.9 or later. Maven must be able to resolve public
-dependencies. The build compiles at Java 17 bytecode and the test suite is verified
-on SapMachine 17 and SapMachine 25; Surefire passes `-Dnet.bytebuddy.experimental=true`
-so Mockito can mock service classes on JDKs newer than the Byte Buddy version
-Spring Boot 3.3.5 ships. All database credentials here are local demonstration values.
+For host builds and tests: JDK 17 or later and Maven 3.9 or later. Maven must be able to
+resolve public dependencies. The build compiles at Java 17 bytecode and the test suite is
+verified on SapMachine 17 and SapMachine 25; Surefire passes
+`-Dnet.bytebuddy.experimental=true` so Mockito can mock service classes on JDKs newer than
+the Byte Buddy version Spring Boot 3.3.5 ships.
+
+For container deployment: Docker Engine 24 or newer with Docker Compose v2, plus Git,
+curl, and Python 3 for the verification scripts. The Dockerfiles install their own build
+toolchain inside the image, so a reviewer does not need Java or Maven on the host. The
+deployment is intended to run on Linux AMD64 and ARM64, macOS Intel and Apple silicon,
+and Windows using Docker Desktop with a WSL2 Linux engine.
 
 ## Build and run
 
@@ -91,41 +97,55 @@ because the module needs the parent POM and `common/`:
 docker build -f intake-service/Dockerfile -t intake-service:1.0.0 .
 ```
 
-Each image runs as a non-root user on a JRE 17 Alpine base, keeps its H2 database
-under the `/app/data` volume and reports health to Docker through `GET /health`.
+The Maven build runs inside the image; the container runtime is the non-root
+Eclipse Temurin 17 JRE image. That runtime base is available for both AMD64 and
+Apple-silicon ARM64, so the application itself does not have to be rebuilt for a
+different CPU architecture. Each service keeps its H2 database under the `/app/data`
+volume and reports health to Docker through `GET /health`.
 
 `docker-compose.yml` deploys all four as the Compose project `scalable-assignment`
 (Compose requires lowercase project names) on one bridge network:
 
-| Container | Host port | Depends on | Volume |
-|---|---|---|---|
+| Container | Default host port | Depends on | Volume |
+|---|---:|---|---|
 | `intake-service` | 8081 | - | `scalable-assignment_intake-data` |
 | `scanner-service` | 8083 | - | `scalable-assignment_scanner-data` |
 | `quarantine-service` | 8082 | Scanner healthy | `scalable-assignment_quarantine-data` |
 | `release-service` | 8084 | Quarantine healthy | `scalable-assignment_release-data` |
 
-Quarantine reaches Scanner at `http://scanner-service:8083` and Release reaches
-Quarantine at `http://quarantine-service:8082`; `localhost` inside a container is that
-container itself. Stop any services started with `java -jar` first, since they hold the
-same host ports.
+Configuration is supplied through environment variables. Compose uses the internal
+service URLs by default, while `SCANNER_BASE_URL` and `QUARANTINE_BASE_URL` remain
+overridable. Database URLs, usernames, optional passwords, capacity, and demo behavior
+are also environment-configured. Copy `.env.example` to `.env` only if you want local
+overrides; never commit `.env` or real credentials.
 
 ```bash
+cp .env.example .env   # optional; .env is gitignored
 docker compose up -d --build --wait
 docker compose ps
 bash scripts/health.sh && bash scripts/e2e.sh
-docker compose down          # add -v to also delete the database volumes
+bash scripts/flow.sh
+bash scripts/flow.sh INFECTED
+docker compose stop
+docker compose up -d --wait
+bash scripts/health.sh && bash scripts/e2e.sh
+docker compose down    # preserves named volumes
+docker compose down -v # removes the demo database volumes
+docker compose up -d --build --wait
 ```
 
-`bash scripts/flow.sh` sends one file through all four services under one correlation
-ID - Intake, Quarantine, the scan Quarantine asks Scanner for, and the release Release
-verifies at Quarantine - and then prints that ID's log lines from each container, which
-shows the containers calling each other by service name.
-`bash scripts/flow.sh INFECTED` shows the same flow ending in a 409 refused release. To
-trace any request by hand, run `docker logs quarantine-service 2>&1 | grep <correlationId>`.
+Quarantine reaches Scanner at `http://scanner-service:8083` and Release reaches
+Quarantine at `http://quarantine-service:8082`; `localhost` inside a container is that
+container itself. Stop any services started with `java -jar` first, since they hold the
+same host ports. To run alongside local JARs, override `INTAKE_PORT`,
+`QUARANTINE_PORT`, `SCANNER_PORT` and `RELEASE_PORT`, then point `INTAKE_URL`,
+`QUARANTINE_URL`, `SCANNER_URL` and `RELEASE_URL` at those alternate host ports.
+The integration tests use fixed host ports 18082, 18084, 18093 and 18094; do not expose
+Docker on those ports while running `mvn test`. Ports such as 28081-28084 are a safer
+parallel-testing choice.
 
-Host ports default to 8081-8084. If those are in use, set `INTAKE_PORT`,
-`QUARANTINE_PORT`, `SCANNER_PORT` and `RELEASE_PORT`, and point the scripts at them
-with `INTAKE_URL`, `QUARANTINE_URL`, `SCANNER_URL` and `RELEASE_URL`.
+The deployment deliberately has no bind mounts from the repository into `/app`, so its
+image builds do not depend on a developer’s absolute path or host filesystem layout.
 
 ## Layout
 

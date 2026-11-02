@@ -9,10 +9,12 @@ QUARANTINE=${QUARANTINE_URL:-http://localhost:8082}
 RELEASE=${RELEASE_URL:-http://localhost:8084}
 MODE=${1:-CLEAN}
 CID="flow-$(date +%s)"
-SHA=$(printf 'flow %s' "$CID" | sha256sum | cut -d' ' -f1)
+SHA=$(python3 -c 'import hashlib,sys; print(hashlib.sha256(sys.argv[1].encode()).hexdigest())' "flow $CID")
 H=(-sS -H 'Content-Type: application/json' -H "X-Correlation-Id: $CID")
 
-field() { echo "$1" | grep -o "\"$2\":\"[^\"]*\"" | head -1 | cut -d'"' -f4; }
+field() {
+  printf '%s' "$1" | python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1]])' "$2"
+}
 
 echo "correlationId=$CID mode=$MODE"
 

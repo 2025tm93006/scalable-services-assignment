@@ -25,6 +25,12 @@ services:
     container_name: intake-service
     ports:
       - "${INTAKE_PORT:-8081}:8081"
+    environment:
+      <<: *common-env
+      DB_URL: jdbc:h2:file:/app/data/intake
+      DB_USERNAME: ${INTAKE_DB_USERNAME:-intake_user}
+      DB_PASSWORD: ${INTAKE_DB_PASSWORD:-}
+      DDL_AUTO: ${DDL_AUTO:-update}
     volumes:
       - intake-data:/app/data
 
@@ -39,6 +45,10 @@ services:
       - "${SCANNER_PORT:-8083}:8083"
     environment:
       <<: *common-env
+      DB_URL: jdbc:h2:file:/app/data/scanner
+      DB_USERNAME: ${SCANNER_DB_USERNAME:-scanner_user}
+      DB_PASSWORD: ${SCANNER_DB_PASSWORD:-}
+      DDL_AUTO: ${DDL_AUTO:-update}
       SCANNER_SLOW_MILLIS: ${SCANNER_SLOW_MILLIS:-2000}
     volumes:
       - scanner-data:/app/data
@@ -54,7 +64,11 @@ services:
       - "${QUARANTINE_PORT:-8082}:8082"
     environment:
       <<: *common-env
-      SCANNER_BASE_URL: http://scanner-service:8083
+      DB_URL: jdbc:h2:file:/app/data/quarantine
+      DB_USERNAME: ${QUARANTINE_DB_USERNAME:-quarantine_user}
+      DB_PASSWORD: ${QUARANTINE_DB_PASSWORD:-}
+      DDL_AUTO: ${DDL_AUTO:-update}
+      SCANNER_BASE_URL: ${SCANNER_BASE_URL:-http://scanner-service:8083}
       MAX_CONCURRENT_SCANS: ${MAX_CONCURRENT_SCANS:-2}
       SCANNER_CB_ENABLED: ${SCANNER_CB_ENABLED:-false}
     volumes:
@@ -74,7 +88,11 @@ services:
       - "${RELEASE_PORT:-8084}:8084"
     environment:
       <<: *common-env
-      QUARANTINE_BASE_URL: http://quarantine-service:8082
+      DB_URL: jdbc:h2:file:/app/data/release
+      DB_USERNAME: ${RELEASE_DB_USERNAME:-release_user}
+      DB_PASSWORD: ${RELEASE_DB_PASSWORD:-}
+      DDL_AUTO: ${DDL_AUTO:-update}
+      QUARANTINE_BASE_URL: ${QUARANTINE_BASE_URL:-http://quarantine-service:8082}
     volumes:
       - release-data:/app/data
     depends_on:

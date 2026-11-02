@@ -14,12 +14,14 @@ COPY release-service/pom.xml release-service/
 COPY common/src common/src
 COPY intake-service/src intake-service/src
 # Tests run in the normal mvn build; the image build only packages this module and common.
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -q -pl intake-service -am package -DskipTests \
+# No BuildKit-only cache mount is used, so the portable AMD64/ARM64 image can be
+# built with the standard builder and runtime available on the host architecture.
+RUN mvn -B -q -pl intake-service -am package -DskipTests \
  && cp intake-service/target/intake-service-*.jar /workspace/app.jar
 
-FROM eclipse-temurin:17-jre-alpine
-RUN addgroup -S app && adduser -S -G app app \
+FROM eclipse-temurin:17-jre
+RUN groupadd --system app \
+ && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app \
  && mkdir -p /app/data && chown -R app:app /app
 WORKDIR /app
 COPY --from=build --chown=app:app /workspace/app.jar app.jar
@@ -30,5 +32,5 @@ EXPOSE 8081
 # H2 file database lives at ./data/intake relative to /app, the default DB_URL in application.yml.
 VOLUME ["/app/data"]
 HEALTHCHECK --interval=10s --timeout=3s --start-period=40s --retries=5 \
-  CMD wget -q -O /dev/null "http://localhost:${SERVER_PORT}/health" || exit 1
+  CMD curl --fail --silent --show-error "http://localhost:${SERVER_PORT}/health" || exit 1
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
